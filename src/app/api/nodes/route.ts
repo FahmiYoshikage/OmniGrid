@@ -1,0 +1,42 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { nodesRepo } from "@/lib/db/repos/nodes";
+
+export const runtime = "nodejs";
+
+const NodeInputSchema = z.object({
+  name: z.string().min(1).max(64),
+  hostname: z.string().min(1).max(255),
+  tailscale_id: z.string().nullish(),
+  os: z.string().nullish(),
+  tags: z.array(z.string()).optional(),
+  ssh_user: z.string().nullish(),
+  ssh_port: z.number().int().min(1).max(65535).optional(),
+  ssh_mode: z.enum(["tailscale", "key", "password"]).optional(),
+  credential_id: z.string().nullish(),
+  mac_address: z.string().nullish(),
+  wol_broadcast: z.string().nullish(),
+  notes: z.string().nullish(),
+});
+
+export async function GET() {
+  return NextResponse.json({ nodes: nodesRepo.list() });
+}
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => null);
+  const parsed = NodeInputSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid input", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+  try {
+    const node = nodesRepo.create(parsed.data);
+    return NextResponse.json({ node }, { status: 201 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "unknown error";
+    return NextResponse.json({ error: msg }, { status: 409 });
+  }
+}
