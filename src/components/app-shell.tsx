@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -35,7 +36,7 @@ const NAV: NavItem[] = [
   { href: "/credentials", label: "Credentials", icon: KeyRound },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/terminal", label: "Terminal", icon: Terminal },
-  { href: "/proxy", label: "Reverse Proxy", icon: Globe, soon: true },
+  { href: "/tunnels", label: "Cloudflare Tunnel", icon: Globe, soon: true },
   { href: "/uptime", label: "Uptime", icon: Activity, soon: true },
   { href: "/runbooks", label: "Runbooks", icon: PlayCircle, soon: true },
   { href: "/audit", label: "Audit Log", icon: ScrollText, soon: true },
@@ -54,7 +55,7 @@ interface AppShellProps {
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
 
-  if (pathname === "/login" || (pathname === "/" && !user)) {
+  if (pathname === "/login" || pathname?.startsWith("/auth/") || (pathname === "/" && !user)) {
     return <>{children}</>;
   }
 
@@ -139,15 +140,7 @@ export function AppShell({ children, user }: AppShellProps) {
                     @{user.username}
                   </span>
                 </div>
-                <form action="/api/auth/logout" method="POST">
-                  <button
-                    type="submit"
-                    className="grid h-8 w-8 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-white/10 hover:text-white"
-                    title="Sign out"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                  </button>
-                </form>
+                <LogoutButton />
               </div>
             </div>
           ) : (
@@ -212,5 +205,36 @@ function AccessRequired() {
         </Link>
       </div>
     </div>
+  );
+}
+
+function LogoutButton() {
+  const [loading, setLoading] = React.useState(false);
+
+  async function handleLogout() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      const data = await res.json().catch(() => ({ displayName: "" }));
+      window.location.href = `/auth/logout?name=${encodeURIComponent(data.displayName || "")}`;
+    } catch {
+      window.location.href = "/auth/logout";
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleLogout}
+      disabled={loading}
+      className="grid h-8 w-8 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+      title="Sign out"
+    >
+      {loading ? (
+        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+      ) : (
+        <LogOut className="h-3.5 w-3.5" />
+      )}
+    </button>
   );
 }

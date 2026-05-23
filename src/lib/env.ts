@@ -25,14 +25,9 @@ const EnvSchema = z.object({
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
 
-  // Tailscale (optional until we wire that milestone).
+  // Tailscale (fallback for development, production uses per-workspace settings).
   TAILSCALE_API_KEY: z.string().optional(),
   TAILSCALE_TAILNET: z.string().optional(),
-
-  // Nginx Proxy Manager (optional).
-  NPM_BASE_URL: z.string().url().optional(),
-  NPM_EMAIL: z.string().email().optional(),
-  NPM_PASSWORD: z.string().optional(),
 
   // Webhook alerting (optional).
   ALERT_WEBHOOK_URL: z.string().url().optional(),

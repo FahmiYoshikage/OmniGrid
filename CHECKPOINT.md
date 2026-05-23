@@ -808,3 +808,206 @@ npm run build
 ```
 
 Hasil: sukses.
+
+## Update Checkpoint 2026-05-23 (Session 6) — OAuth Fix, Login/Logout Animations, Mock Removal, Cloudflare Migration
+
+### 21. OAuth State Validation Fix (invalid_state Bug)
+
+**Root cause:** Setelah logout dan login ulang, cookie `github_oauth_state` yang di-set pada `/api/auth/github` tidak selalu bertahan di browser saat redirect chain GitHub → callback terjadi sangat cepat. Cookie bisa hilang karena timing `sameSite: "lax"` + redirect chain, atau karena browser agresif menghapus cookie dari respons 307.
+
+**File baru:**
+- `src/lib/db/migrations/004_oauth_states_and_cloudflare.sql`
+
+**File edit:**
+- `src/app/api/auth/github/route.ts`
+- `src/app/api/auth/github/callback/route.ts`
+
+**Perubahan:**
+- Migration 004: Menambahkan tabel `oauth_states(state, expires_at)` untuk menyimpan state di database.
+- `GET /api/auth/github`: Sekarang menyimpan state di **dua tempat**: cookie (primary) DAN database (fallback). Cookie `secure` di-set `false` untuk dev localhost.
+- `GET /api/auth/github/callback`: State validation sekarang memakai **dual approach**:
+  1. Cek cookie dulu (cepat, standar).
+  2. Kalau cookie tidak ada/tidak cocok, fallback ke database lookup.
+  3. Bersihkan state dari cookie dan database setelah validasi berhasil.
+  4. Expired states juga dibersihkan otomatis.
+- Redirect setelah login berhasil sekarang ke `/auth/success` (bukan langsung `/`), untuk menampilkan loading animation.
+
+**Alasan:** Menyelesaikan bug `invalid_state` yang terjadi berulang-ulang setelah logout → login ulang. User harus klik login berkali-kali sebelum berhasil karena cookie state hilang.
+
+### 22. Login Success Animation Page
+
+**File baru:**
+- `src/app/auth/success/page.tsx`
+
+**Perubahan:**
+- Halaman transisi setelah OAuth callback berhasil.
+- Animasi step-by-step:
+  1. Authenticating with GitHub 🔐
+  2. Loading your workspace 📦
+  3. Syncing integrations 🔄
+  4. Preparing dashboard ✨
+- Logo berputar dengan border animation.
+- Progress bar yang bergerak smooth.
+- Fade out sebelum redirect ke dashboard (`/`).
+- Durasi total ~3.5 detik.
+
+**Alasan:** User mengeluh login "freeze" — tidak ada visual feedback setelah GitHub OAuth selesai. Sekarang ada loading animation yang informatif.
+
+### 23. Logout Animation Page
+
+**File baru:**
+- `src/app/auth/logout/page.tsx`
+
+**File edit:**
+- `src/app/api/auth/logout/route.ts`
+- `src/components/app-shell.tsx`
+
+**Perubahan:**
+- `POST /api/auth/logout` sekarang mengembalikan JSON `{ ok: true, displayName }` (bukan redirect).
+- `AppShell` menambahkan `LogoutButton` komponen client-side:
+  - Fetch POST ke logout API.
+  - Redirect ke `/auth/logout?name=...` dengan display name user.
+  - Loading spinner saat proses logout.
+- Halaman `/auth/logout`:
+  - Menampilkan "See you later, [name]!" dengan animasi bounce logo.
+  - Animated dots dan fade out.
+  - Auto-redirect ke landing page (`/`) setelah 3 detik.
+
+**Alasan:** User ingin logout yang seamless dengan animasi, bukan langsung redirect tanpa feedback.
+
+### 24. Mock Data Removal
+
+**File edit:**
+- `src/lib/tailscale/client.ts`
+- `src/lib/tailscale/types.ts`
+
+**Perubahan:**
+- Menghapus seluruh fungsi `mockSnapshot()` dari Tailscale client.
+- `getTailnet()` sekarang mengembalikan `null` (bukan mock data) jika Tailscale tidak dikonfigurasi.
+- Return type berubah dari `Promise<TailnetSnapshot>` menjadi `Promise<TailnetSnapshot | null>`.
+- `TailnetSnapshot.source` berubah dari `"api" | "mock"` menjadi `"api"` saja.
+
+**Alasan:** Tidak boleh ada mock/demo data di production state. User harus konfigurasi Tailscale sendiri via Settings UI.
+
+### 25. Dashboard & Topology Workspace Scoping + Empty State
+
+**File edit:**
+- `src/app/dashboard-overview.tsx`
+- `src/app/topology/page.tsx`
+- `src/app/api/tailscale/devices/route.ts`
+
+**Perubahan:**
+- `DashboardOverview` sekarang memanggil `requireSessionUser()` dan scope semua data fetch ke `user.workspaceId`.
+- Jika Tailscale null (belum dikonfigurasi):
+  - Dashboard menampilkan "Tailscale not configured" card dengan link ke Settings.
+  - Topology menampilkan "not configured" empty state dengan icon dan link ke Settings.
+  - Badge "Mock data" dihapus.
+- `GET /api/tailscale/devices` mengembalikan `{ error: "Tailscale not configured..." }` (404) jika null.
+
+**Alasan:** Semua halaman harus workspace-scoped dan menampilkan state yang jelas ketika integrasi belum dikonfigurasi.
+
+### 26. NPM Proxy Manager → Cloudflare Zero Trust Connector
+
+**File baru:**
+- `src/app/api/settings/cloudflare/route.ts`
+
+**File edit:**
+- `src/lib/env.ts`
+- `src/lib/db/repos/integration-settings.ts`
+- `src/app/settings/settings-client.tsx`
+- `src/components/app-shell.tsx`
+- `.env.local`
+- `src/lib/db/migrations/004_oauth_states_and_cloudflare.sql`
+
+**Perubahan:**
+- **Env:** Menghapus `NPM_BASE_URL`, `NPM_EMAIL`, `NPM_PASSWORD` dari Zod schema.
+- **Integration Settings Repo:**
+  - Provider type berubah dari `"tailscale" | "npm" | "webhook"` menjadi `"tailscale" | "cloudflare" | "webhook"`.
+  - Menambahkan fungsi Cloudflare: `getCloudflarePublic()`, `revealCloudflare()`, `updateCloudflare()`.
+  - Cloudflare menyimpan: `account_id`, `tunnel_token`, `api_token` — semua terenkripsi.
+- **API Route:** `GET/PUT /api/settings/cloudflare` untuk manage Cloudflare Zero Trust settings.
+- **Settings UI:**
+  - Menambahkan card "Cloudflare Zero Trust" di bawah Tailscale.
+  - Input: Account ID, Tunnel Token, API Token (optional, untuk monitoring domain).
+  - Checkbox "Clear saved tunnel token on save".
+  - Security model card sekarang meng-cover kedua integrasi.
+- **Sidebar Nav:** "Reverse Proxy" diganti menjadi "Cloudflare Tunnel" (masih `soon`).
+- **Migration:** Delete data `integration_settings` yang provider-nya `npm`.
+- **.env.local:** Menghapus semua referensi NPM.
+
+**Alasan:** Perubahan konsep arsitektur dari NPM Proxy Manager ke Cloudflare Zero Trust Connector. Domain yang di-assign ke Tailscale akan dimonitor via Cloudflare API.
+
+### 27. Login Button Loading State
+
+**File edit:**
+- `src/app/login/github-login-button.tsx`
+
+**Perubahan:**
+- Menambahkan `useState` loading state.
+- Saat diklik, tombol menampilkan spinner + "Redirecting to GitHub..." dan disable pointer events.
+- Mencegah double-click selama redirect ke GitHub OAuth.
+
+### Validasi Terbaru
+
+Command:
+
+```bash
+npm run build
+```
+
+Hasil: sukses. TypeScript passed tanpa error. Routes generated:
+
+```
+ƒ /auth/logout
+ƒ /auth/success
+ƒ /api/settings/cloudflare
+```
+
+Server restart: migration v4 applied (`oauth_states` table + NPM cleanup).
+
+Status: stabil.
+
+## Pending / Next Steps yang Disarankan
+
+### High Priority
+- Terminal buffer replay visual polish.
+- Custom delete confirmation dialog (ganti browser `confirm()` dengan modal premium).
+- Cloudflare Tunnel UI page (`/tunnels`) — list domains, tunnel status, monitoring.
+
+### Medium Priority
+- Audit Log UI dengan filter workspace.
+- README update mencakup konsep Cloudflare Zero Trust dan env setup baru.
+- Cloudflare DNS/Zone integration — list domains assigned to tunnel.
+
+### Future Milestones
+- Cloudflare Tunnel management (create/delete tunnels, assign domains).
+- Uptime monitoring.
+- Runbooks.
+- Wake-on-LAN.
+- Fleet control.
+- Multi-workspace switcher UI.
+- Team/invite member ke workspace.
+
+## Known Considerations (Updated)
+- Terminal reattach tidak menyimpan seluruh history scrollback, hanya output buffer terakhir 200KB.
+- Credential secret/passphrase tidak dikembalikan API. Edit mode: kosongkan field untuk keep existing.
+- `Button` project ini tidak mendukung `asChild`.
+- Workspace baru dibuat secara otomatis saat pertama kali user login (default workspace).
+- `TAILSCALE_API_KEY` dan `TAILSCALE_TAILNET` di env masih diperbolehkan sebagai fallback development.
+- OAuth state sekarang disimpan di cookie DAN database (dual validation) untuk menghindari invalid_state.
+- Tailscale client mengembalikan `null` jika tidak dikonfigurasi (bukan mock data).
+- NPM Proxy Manager sudah dihapus. Semua referensi diganti ke Cloudflare Zero Trust Connector.
+- Logout menggunakan JSON API + client-side redirect ke animasi page.
+- Login redirect ke `/auth/success` untuk loading animation sebelum masuk dashboard.
+
+## Status Akhir Checkpoint
+
+Status: stabil setelah build.
+
+Command validasi terakhir:
+
+```bash
+npm run build
+```
+
+Hasil: sukses.

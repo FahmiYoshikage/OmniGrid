@@ -10,7 +10,7 @@ export default async function SettingsPage() {
     <div className="flex min-h-full flex-col">
       <PageHeader
         title="Settings"
-        description="Workspace-scoped integration settings for OmniGrid SaaS users."
+        description="Manage your workspace integrations — Tailscale, Cloudflare Zero Trust, and more."
       />
       <SettingsClient />
     </div>

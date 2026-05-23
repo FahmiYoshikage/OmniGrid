@@ -11,6 +11,9 @@ export async function GET(req: Request) {
   const force = url.searchParams.get("force") === "1";
   try {
     const snapshot = await getTailnet({ force, workspaceId: user.workspaceId });
+    if (!snapshot) {
+      return NextResponse.json({ error: "Tailscale not configured. Add your API key in Settings." }, { status: 404 });
+    }
     return NextResponse.json(snapshot);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown error";

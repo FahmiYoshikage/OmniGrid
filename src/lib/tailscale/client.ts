@@ -14,15 +14,15 @@ import type {
  * render is wasteful and slow (200–600 ms RTT). 30 s TTL = snappy UI, fresh
  * enough for a dashboard.
  *
- * If TAILSCALE_API_KEY is absent we serve a deterministic mock so the app is
- * fully demo-able offline.
+ * If no Tailscale API key is configured, returns null to signal
+ * "not configured" — no mock data in production code.
  */
 
 const TTL_MS = 30_000;
 const API_BASE = "https://api.tailscale.com/api/v2";
 
 const cache = new Map<string, TailnetSnapshot>();
-const inflight = new Map<string, Promise<TailnetSnapshot>>();
+const inflight = new Map<string, Promise<TailnetSnapshot | null>>();
 
 function shorten(name: string): string {
   // mybox.tail-1234.ts.net -> mybox
@@ -57,43 +57,14 @@ function normalise(raw: TailscaleDeviceRaw): TailscaleDevice {
   };
 }
 
-function mockSnapshot(): TailnetSnapshot {
-  const now = Date.now();
-  const fixtures: Array<Partial<TailscaleDeviceRaw> & { name: string; os: string }> = [
-    { name: "homelab-pi.tail-demo.ts.net", os: "linux", hostname: "homelab-pi", addresses: ["100.64.0.10"] },
-    { name: "vps-frankfurt.tail-demo.ts.net", os: "linux", hostname: "vps-frankfurt", addresses: ["100.64.0.20"] },
-    { name: "nas-truenas.tail-demo.ts.net", os: "linux", hostname: "nas-truenas", addresses: ["100.64.0.30"] },
-    { name: "macbook.tail-demo.ts.net", os: "macOS", hostname: "macbook", addresses: ["100.64.0.40"] },
-    { name: "iphone.tail-demo.ts.net", os: "iOS", hostname: "iphone", addresses: ["100.64.0.50"], online: false },
-  ];
-  const devices = fixtures.map((f, i) =>
-    normalise({
-      id: `mock-${i}`,
-      nodeId: `mock-node-${i}`,
-      name: f.name,
-      hostname: f.hostname ?? f.name,
-      os: f.os,
-      addresses: f.addresses ?? [`100.64.0.${100 + i}`],
-      user: "demo@example.com",
-      tags: i === 0 ? ["tag:server"] : [],
-      lastSeen: new Date(now - (f.online === false ? 3_600_000 : 30_000)).toISOString(),
-      online: f.online ?? true,
-      authorized: true,
-      isExternal: false,
-      clientVersion: "1.84.0",
-      updateAvailable: false,
-    } as TailscaleDeviceRaw),
-  );
-  return { devices, fetchedAt: now, source: "mock" };
-}
-
-async function fetchFromApi(workspaceId?: string): Promise<TailnetSnapshot> {
+async function fetchFromApi(workspaceId?: string): Promise<TailnetSnapshot | null> {
   const env = getEnv();
   const settings = workspaceId ? integrationSettingsRepo.revealTailscale(workspaceId) : null;
   const apiKey = settings?.apiKey || env.TAILSCALE_API_KEY;
   const tailnet = settings?.tailnet || env.TAILSCALE_TAILNET;
   if (!apiKey || !tailnet) {
-    return mockSnapshot();
+    // Not configured — return null (no mock data)
+    return null;
   }
   const url = `${API_BASE}/tailnet/${encodeURIComponent(tailnet)}/devices`;
   const auth = Buffer.from(`${apiKey}:`).toString("base64");
@@ -113,7 +84,7 @@ async function fetchFromApi(workspaceId?: string): Promise<TailnetSnapshot> {
   };
 }
 
-export async function getTailnet(opts?: { force?: boolean; workspaceId?: string }): Promise<TailnetSnapshot> {
+export async function getTailnet(opts?: { force?: boolean; workspaceId?: string }): Promise<TailnetSnapshot | null> {
   const cacheKey = opts?.workspaceId ?? "default";
   const cached = cache.get(cacheKey);
   const fresh = cached && Date.now() - cached.fetchedAt < TTL_MS;
@@ -123,7 +94,7 @@ export async function getTailnet(opts?: { force?: boolean; workspaceId?: string 
   const promise = (async () => {
     try {
       const snap = await fetchFromApi(opts?.workspaceId);
-      cache.set(cacheKey, snap);
+      if (snap) cache.set(cacheKey, snap);
       return snap;
     } finally {
       inflight.delete(cacheKey);

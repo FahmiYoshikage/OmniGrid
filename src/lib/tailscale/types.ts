@@ -43,5 +43,5 @@ export interface TailscaleDevice {
 export interface TailnetSnapshot {
   devices: TailscaleDevice[];
   fetchedAt: number;
-  source: "api" | "mock";
+  source: "api";
 }

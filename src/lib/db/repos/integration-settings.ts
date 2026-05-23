@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { prep } from "@/lib/db/client";
 import { decrypt, encrypt } from "@/lib/crypto";
 
-export type IntegrationProvider = "tailscale" | "npm" | "webhook";
+export type IntegrationProvider = "tailscale" | "cloudflare" | "webhook";
 
 interface IntegrationSettingRow {
   id: string;
@@ -22,6 +22,17 @@ export interface TailscaleSettingsPublic {
 
 export interface TailscaleSettingsSecret extends TailscaleSettingsPublic {
   apiKey: string | null;
+}
+
+export interface CloudflareSettingsPublic {
+  accountId: string;
+  hasTunnelToken: boolean;
+  updatedAt: number | null;
+}
+
+export interface CloudflareSettingsSecret extends CloudflareSettingsPublic {
+  tunnelToken: string | null;
+  apiToken: string | null;
 }
 
 function getSetting(workspaceId: string, provider: IntegrationProvider, key: string): IntegrationSettingRow | undefined {
@@ -58,6 +69,7 @@ function revealSetting(workspaceId: string, provider: IntegrationProvider, key: 
 }
 
 export const integrationSettingsRepo = {
+  // ─── Tailscale ──────────────────────────────────────────────────────────────
   getTailscalePublic(workspaceId: string): TailscaleSettingsPublic {
     const apiKey = getSetting(workspaceId, "tailscale", "api_key");
     const tailnet = getSetting(workspaceId, "tailscale", "tailnet");
@@ -84,5 +96,46 @@ export const integrationSettingsRepo = {
       setSetting(workspaceId, "tailscale", "api_key", input.apiKey.trim());
     }
     return this.getTailscalePublic(workspaceId);
+  },
+
+  // ─── Cloudflare Zero Trust ──────────────────────────────────────────────────
+  getCloudflarePublic(workspaceId: string): CloudflareSettingsPublic {
+    const accountId = getSetting(workspaceId, "cloudflare", "account_id");
+    const tunnelToken = getSetting(workspaceId, "cloudflare", "tunnel_token");
+    return {
+      accountId: accountId ? decrypt(accountId.value_enc) : "",
+      hasTunnelToken: Boolean(tunnelToken),
+      updatedAt: Math.max(accountId?.updated_at ?? 0, tunnelToken?.updated_at ?? 0) || null,
+    };
+  },
+
+  revealCloudflare(workspaceId: string): CloudflareSettingsSecret {
+    const publicSettings = this.getCloudflarePublic(workspaceId);
+    return {
+      ...publicSettings,
+      tunnelToken: revealSetting(workspaceId, "cloudflare", "tunnel_token"),
+      apiToken: revealSetting(workspaceId, "cloudflare", "api_token"),
+    };
+  },
+
+  updateCloudflare(workspaceId: string, input: {
+    accountId: string;
+    tunnelToken?: string;
+    apiToken?: string;
+    clearTunnelToken?: boolean;
+    clearApiToken?: boolean;
+  }): CloudflareSettingsPublic {
+    setSetting(workspaceId, "cloudflare", "account_id", input.accountId.trim());
+    if (input.clearTunnelToken) {
+      deleteSetting(workspaceId, "cloudflare", "tunnel_token");
+    } else if (input.tunnelToken?.trim()) {
+      setSetting(workspaceId, "cloudflare", "tunnel_token", input.tunnelToken.trim());
+    }
+    if (input.clearApiToken) {
+      deleteSetting(workspaceId, "cloudflare", "api_token");
+    } else if (input.apiToken?.trim()) {
+      setSetting(workspaceId, "cloudflare", "api_token", input.apiToken.trim());
+    }
+    return this.getCloudflarePublic(workspaceId);
   },
 };

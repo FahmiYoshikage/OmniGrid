@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 function GitHubIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -18,13 +20,33 @@ function GitHubIcon({ className }: { className?: string }) {
 }
 
 export function GitHubLoginButton() {
+  const [loading, setLoading] = useState(false);
+
+  function handleClick() {
+    setLoading(true);
+  }
+
   return (
     <a
       href="/api/auth/github"
-      className="group flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-slate-900 shadow-lg shadow-white/5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/95 hover:shadow-xl hover:shadow-white/10 active:translate-y-0"
+      onClick={handleClick}
+      className={`group flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-3.5 text-sm font-semibold shadow-lg shadow-white/5 transition-all duration-200 ${
+        loading
+          ? "pointer-events-none bg-white/80 text-slate-500"
+          : "bg-white text-slate-900 hover:-translate-y-0.5 hover:bg-white/95 hover:shadow-xl hover:shadow-white/10 active:translate-y-0"
+      }`}
     >
-      <GitHubIcon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-      Sign in with GitHub
+      {loading ? (
+        <>
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+          Redirecting to GitHub...
+        </>
+      ) : (
+        <>
+          <GitHubIcon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
+          Sign in with GitHub
+        </>
+      )}
     </a>
   );
 }

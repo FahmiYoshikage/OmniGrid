@@ -4,12 +4,15 @@ import { Badge } from "@/components/ui/badge";
 import { getTailnet } from "@/lib/tailscale/client";
 import { nodesRepo } from "@/lib/db/repos/nodes";
 import { auditRepo } from "@/lib/db/repos/audit";
-import { Activity, Server, Network, ScrollText, ArrowUpRight } from "lucide-react";
+import { requireSessionUser } from "@/lib/auth/access";
+import { Activity, Server, Network, ScrollText, ArrowUpRight, Settings } from "lucide-react";
+import Link from "next/link";
 
 export async function DashboardOverview() {
-  const [snapshot] = await Promise.all([getTailnet().catch(() => null)]);
-  const localNodes = nodesRepo.list();
-  const audits = auditRepo.recent(5);
+  const user = await requireSessionUser();
+  const [snapshot] = await Promise.all([getTailnet({ workspaceId: user.workspaceId }).catch(() => null)]);
+  const localNodes = nodesRepo.list(user.workspaceId);
+  const audits = auditRepo.recent(5, user.workspaceId);
 
   const online = snapshot?.devices.filter((d) => d.online).length ?? 0;
   const total = snapshot?.devices.length ?? 0;
@@ -20,17 +23,17 @@ export async function DashboardOverview() {
         title="Overview"
         description="Health snapshot of your tailnet, fleet, and recent activity."
         actions={
-          snapshot && (
-            <Badge variant={snapshot.source === "api" ? "default" : "secondary"}>
-              {snapshot.source === "api" ? "Tailscale API" : "Mock data"}
+          snapshot ? (
+            <Badge variant="default">
+              Tailscale API
             </Badge>
-          )
+          ) : null
         }
       />
       <div className="grid grid-cols-1 gap-4 p-8 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={<Network className="h-4 w-4" />} label="Tailnet devices" value={`${online} / ${total}`} hint="online / total" />
+        <StatCard icon={<Network className="h-4 w-4" />} label="Tailnet devices" value={snapshot ? `${online} / ${total}` : "—"} hint={snapshot ? "online / total" : "Configure in Settings"} />
         <StatCard icon={<Server className="h-4 w-4" />} label="Managed nodes" value={String(localNodes.length)} hint="entries in OmniGrid DB" />
-        <StatCard icon={<Activity className="h-4 w-4" />} label="Uptime checks" value="—" hint="enabled in M8" />
+        <StatCard icon={<Activity className="h-4 w-4" />} label="Uptime checks" value="—" hint="coming soon" />
         <StatCard icon={<ScrollText className="h-4 w-4" />} label="Audit events" value={String(audits.length)} hint="last 5" />
       </div>
 
@@ -68,7 +71,24 @@ export async function DashboardOverview() {
           </CardHeader>
           <CardContent>
             {!snapshot ? (
-              <p className="text-sm text-destructive">Failed to load Tailscale snapshot.</p>
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/5 bg-black/20 p-6 text-center">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+                  <Settings className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Tailscale not configured</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Add your Tailscale API key and tailnet in Settings to see your devices here.
+                  </p>
+                </div>
+                <Link
+                  href="/settings"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300/15 px-4 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-300/25"
+                >
+                  <Settings className="h-3 w-3" />
+                  Go to Settings
+                </Link>
+              </div>
             ) : (
               <ul className="space-y-1 text-sm">
                 {snapshot.devices.slice(0, 6).map((d) => (
