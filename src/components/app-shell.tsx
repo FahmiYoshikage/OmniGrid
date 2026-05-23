@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -13,6 +14,10 @@ import {
   PlayCircle,
   Power,
   Sparkles,
+  LogOut,
+  KeyRound,
+  ShieldCheck,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +32,8 @@ const NAV: NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/nodes", label: "Nodes", icon: Server },
+  { href: "/credentials", label: "Credentials", icon: KeyRound },
+  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/terminal", label: "Terminal", icon: Terminal },
   { href: "/proxy", label: "Reverse Proxy", icon: Globe, soon: true },
   { href: "/uptime", label: "Uptime", icon: Activity, soon: true },
@@ -35,15 +42,39 @@ const NAV: NavItem[] = [
   { href: "/wol", label: "Wake-on-LAN", icon: Power, soon: true },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  user?: {
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+}
+
+export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
+
+  if (pathname === "/login" || (pathname === "/" && !user)) {
+    return <>{children}</>;
+  }
+
+  if (!user) {
+    return <AccessRequired />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden text-foreground">
       <aside className="relative m-3 mr-0 flex w-64 shrink-0 flex-col overflow-hidden rounded-3xl border border-white/10 bg-sidebar/80 shadow-2xl shadow-black/30 backdrop-blur-xl">
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-cyan-400/15 to-transparent" />
         <div className="relative flex h-20 items-center gap-3 border-b border-white/10 px-4">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-emerald-300 via-cyan-300 to-sky-400 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20">
-            OG
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-white/10 to-white/5 shadow-lg shadow-cyan-500/10 ring-1 ring-white/10">
+            <Image
+              src="/logo.svg"
+              alt="OmniGrid"
+              width={28}
+              height={28}
+              className="drop-shadow-md"
+            />
           </div>
           <div className="flex flex-col leading-tight">
             <span className="text-base font-bold tracking-tight">OmniGrid</span>
@@ -83,14 +114,51 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        {/* User section at bottom */}
         <div className="relative mt-auto p-3">
-          <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/10 p-3 text-xs text-emerald-50/80">
-            <div className="mb-1 flex items-center gap-2 font-medium text-emerald-100">
-              <Sparkles className="h-3.5 w-3.5" />
-              Tailscale-first
+          {user ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <div className="flex items-center gap-3">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.username}
+                    className="h-9 w-9 rounded-xl ring-1 ring-white/10"
+                  />
+                ) : (
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-300/15 text-xs font-bold text-cyan-200">
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex flex-1 flex-col truncate leading-tight">
+                  <span className="truncate text-sm font-medium">
+                    {user.displayName || user.username}
+                  </span>
+                  <span className="truncate text-[11px] text-muted-foreground">
+                    @{user.username}
+                  </span>
+                </div>
+                <form action="/api/auth/logout" method="POST">
+                  <button
+                    type="submit"
+                    className="grid h-8 w-8 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-white/10 hover:text-white"
+                    title="Sign out"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                  </button>
+                </form>
+              </div>
             </div>
-            Secure control plane for SSH, topology, proxy, and runbooks.
-          </div>
+          ) : (
+            <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/10 p-3 text-xs text-emerald-50/80">
+              <div className="mb-1 flex items-center gap-2 font-medium text-emerald-100">
+                <Sparkles className="h-3.5 w-3.5" />
+                Tailscale-first
+              </div>
+              Secure control plane for SSH, topology, proxy, and runbooks.
+            </div>
+          )}
         </div>
       </aside>
       <main className="m-3 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/20 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -120,6 +188,28 @@ export function PageHeader({
         )}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
+      </div>
+    </div>
+  );
+}
+
+function AccessRequired() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-slate-950 px-6 text-white">
+      <div className="max-w-md rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl shadow-black/30">
+        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+          <ShieldCheck className="h-7 w-7" />
+        </div>
+        <h1 className="text-2xl font-bold">Login required</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          OmniGrid dashboard, SSH, nodes, credentials, and topology require an authenticated session.
+        </p>
+        <Link
+          href="/login"
+          className="mt-6 inline-flex rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+        >
+          Sign in with GitHub
+        </Link>
       </div>
     </div>
   );

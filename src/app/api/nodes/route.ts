@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { nodesRepo } from "@/lib/db/repos/nodes";
+import { requireApiSession } from "@/lib/auth/api";
 
 export const runtime = "nodejs";
 
@@ -20,10 +21,14 @@ const NodeInputSchema = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({ nodes: nodesRepo.list() });
+  const { user, response } = await requireApiSession();
+  if (response) return response;
+  return NextResponse.json({ nodes: nodesRepo.list(user.workspaceId) });
 }
 
 export async function POST(req: Request) {
+  const { user, response } = await requireApiSession();
+  if (response) return response;
   const body = await req.json().catch(() => null);
   const parsed = NodeInputSchema.safeParse(body);
   if (!parsed.success) {
@@ -33,7 +38,7 @@ export async function POST(req: Request) {
     );
   }
   try {
-    const node = nodesRepo.create(parsed.data);
+    const node = nodesRepo.create(parsed.data, user.workspaceId);
     return NextResponse.json({ node }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown error";

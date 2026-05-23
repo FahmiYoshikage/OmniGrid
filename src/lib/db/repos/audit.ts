@@ -10,11 +10,12 @@ export interface AuditEntry {
 }
 
 export const auditRepo = {
-  log(entry: Omit<AuditEntry, "ts"> & { ts?: number }) {
-    prep<[number, string, string, string | null, string | null, string | null]>(
-      `INSERT INTO audit_log (ts, actor, action, node_id, session_id, detail)
-       VALUES (?, ?, ?, ?, ?, ?)`
+  log(entry: Omit<AuditEntry, "ts"> & { ts?: number; workspaceId?: string }) {
+    prep<[string | null, number, string, string, string | null, string | null, string | null]>(
+      `INSERT INTO audit_log (workspace_id, ts, actor, action, node_id, session_id, detail)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
+      entry.workspaceId ?? null,
       entry.ts ?? Date.now(),
       entry.actor,
       entry.action,
@@ -24,10 +25,14 @@ export const auditRepo = {
     );
   },
 
-  recent(limit = 100): AuditEntry[] {
-    const rows = prep<[number]>(
-      "SELECT ts, actor, action, node_id, session_id, detail FROM audit_log ORDER BY ts DESC LIMIT ?",
-    ).all(limit) as Array<{
+  recent(limit = 100, workspaceId?: string): AuditEntry[] {
+    const rows = (workspaceId
+      ? prep<[string, number]>(
+          "SELECT ts, actor, action, node_id, session_id, detail FROM audit_log WHERE workspace_id = ? ORDER BY ts DESC LIMIT ?",
+        ).all(workspaceId, limit)
+      : prep<[number]>(
+          "SELECT ts, actor, action, node_id, session_id, detail FROM audit_log ORDER BY ts DESC LIMIT ?",
+        ).all(limit)) as Array<{
       ts: number;
       actor: string;
       action: string;

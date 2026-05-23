@@ -6,6 +6,7 @@ export type CredentialKind = "ssh_key" | "password";
 
 interface CredentialRow {
   id: string;
+  workspace_id: string | null;
   label: string;
   kind: CredentialKind;
   secret_enc: string;
@@ -36,13 +37,17 @@ function toPublic(r: CredentialRow): CredentialPublic {
 }
 
 export const credentialsRepo = {
-  list(): CredentialPublic[] {
-    const rows = prep<[]>("SELECT * FROM credentials ORDER BY label").all() as CredentialRow[];
+  list(workspaceId?: string): CredentialPublic[] {
+    const rows = (workspaceId
+      ? prep<[string]>("SELECT * FROM credentials WHERE workspace_id = ? ORDER BY label").all(workspaceId)
+      : prep<[]>("SELECT * FROM credentials ORDER BY label").all()) as CredentialRow[];
     return rows.map(toPublic);
   },
 
-  get(id: string): CredentialPublic | undefined {
-    const row = prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id) as
+  get(id: string, workspaceId?: string): CredentialPublic | undefined {
+    const row = (workspaceId
+      ? prep<[string, string]>("SELECT * FROM credentials WHERE id = ? AND workspace_id = ?").get(id, workspaceId)
+      : prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id)) as
       | CredentialRow
       | undefined;
     return row ? toPublic(row) : undefined;
@@ -53,14 +58,15 @@ export const credentialsRepo = {
     kind: CredentialKind;
     secret: string;
     passphrase?: string;
-  }): CredentialPublic {
+  }, workspaceId?: string): CredentialPublic {
     const id = randomUUID();
     const now = Date.now();
-    prep<[string, string, CredentialKind, string, string | null, number, number]>(
-      `INSERT INTO credentials (id, label, kind, secret_enc, passphrase_enc, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    prep<[string, string | null, string, CredentialKind, string, string | null, number, number]>(
+      `INSERT INTO credentials (id, workspace_id, label, kind, secret_enc, passphrase_enc, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
+      workspaceId ?? null,
       input.label,
       input.kind,
       encrypt(input.secret),
@@ -69,7 +75,9 @@ export const credentialsRepo = {
       now,
     );
     return toPublic(
-      prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id) as CredentialRow,
+      workspaceId
+        ? (prep<[string, string]>("SELECT * FROM credentials WHERE id = ? AND workspace_id = ?").get(id, workspaceId) as CredentialRow)
+        : (prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id) as CredentialRow),
     );
   },
 
@@ -78,8 +86,10 @@ export const credentialsRepo = {
     kind: CredentialKind;
     secret?: string;
     passphrase?: string | null;
-  }): CredentialPublic | undefined {
-    const existing = prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id) as
+  }, workspaceId?: string): CredentialPublic | undefined {
+    const existing = (workspaceId
+      ? prep<[string, string]>("SELECT * FROM credentials WHERE id = ? AND workspace_id = ?").get(id, workspaceId)
+      : prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id)) as
       | CredentialRow
       | undefined;
     if (!existing) return undefined;
@@ -87,7 +97,7 @@ export const credentialsRepo = {
     prep<[string, CredentialKind, string, string | null, number, string]>(
       `UPDATE credentials SET
         label = ?, kind = ?, secret_enc = ?, passphrase_enc = ?, updated_at = ?
-      WHERE id = ?`,
+      WHERE id = ?${workspaceId ? " AND workspace_id = ?" : ""}`,
     ).run(
       input.label,
       input.kind,
@@ -100,12 +110,14 @@ export const credentialsRepo = {
       now,
       id,
     );
-    return this.get(id);
+    return this.get(id, workspaceId);
   },
 
   /** Server-only: returns plaintext secret. NEVER expose this over HTTP. */
-  reveal(id: string): { secret: string; passphrase: string | null } | null {
-    const row = prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id) as
+  reveal(id: string, workspaceId?: string): { secret: string; passphrase: string | null } | null {
+    const row = (workspaceId
+      ? prep<[string, string]>("SELECT * FROM credentials WHERE id = ? AND workspace_id = ?").get(id, workspaceId)
+      : prep<[string]>("SELECT * FROM credentials WHERE id = ?").get(id)) as
       | CredentialRow
       | undefined;
     if (!row) return null;
@@ -115,7 +127,11 @@ export const credentialsRepo = {
     };
   },
 
-  delete(id: string): void {
+  delete(id: string, workspaceId?: string): void {
+    if (workspaceId) {
+      prep<[string, string]>("DELETE FROM credentials WHERE id = ? AND workspace_id = ?").run(id, workspaceId);
+      return;
+    }
     prep<[string]>("DELETE FROM credentials WHERE id = ?").run(id);
   },
 };

@@ -20,6 +20,10 @@ const EnvSchema = z.object({
   // Server bind config (used by custom server later).
   OMNIGRID_HOST: z.string().default("0.0.0.0"),
   OMNIGRID_PORT: z.coerce.number().int().positive().default(3000),
+  OMNIGRID_PUBLIC_URL: z.string().url().optional(),
+
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
 
   // Tailscale (optional until we wire that milestone).
   TAILSCALE_API_KEY: z.string().optional(),

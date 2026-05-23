@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/app-shell";
 import { nodesRepo } from "@/lib/db/repos/nodes";
+import { requireSessionUser } from "@/lib/auth/access";
 import { TerminalWorkspace } from "./terminal-workspace";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export default async function TerminalPage({
 }: {
   searchParams: Promise<{ node?: string }>;
 }) {
+  await requireSessionUser();
   const { node } = await searchParams;
   const nodes = nodesRepo.list().map((n) => ({
     id: n.id,

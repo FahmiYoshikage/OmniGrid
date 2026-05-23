@@ -2,10 +2,12 @@ import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { getTailnet } from "@/lib/tailscale/client";
 import { TopologyCanvas } from "./topology-canvas";
+import { requireSessionUser } from "@/lib/auth/access";
 
 export const dynamic = "force-dynamic";
 
 export default async function TopologyPage() {
+  await requireSessionUser();
   const snapshot = await getTailnet().catch(() => null);
 
   return (

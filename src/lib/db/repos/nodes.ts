@@ -5,6 +5,7 @@ export type SshMode = "tailscale" | "key" | "password";
 
 export interface NodeRow {
   id: string;
+  workspace_id: string | null;
   name: string;
   hostname: string;
   tailscale_id: string | null;
@@ -37,31 +38,36 @@ export interface NodeInput {
 }
 
 export const nodesRepo = {
-  list(): NodeRow[] {
-    return prep<[]>("SELECT * FROM nodes ORDER BY name").all() as NodeRow[];
+  list(workspaceId?: string): NodeRow[] {
+    if (!workspaceId) return prep<[]>("SELECT * FROM nodes ORDER BY name").all() as NodeRow[];
+    return prep<[string]>("SELECT * FROM nodes WHERE workspace_id = ? ORDER BY name").all(workspaceId) as NodeRow[];
   },
 
-  get(id: string): NodeRow | undefined {
-    return prep<[string]>("SELECT * FROM nodes WHERE id = ?").get(id) as
+  get(id: string, workspaceId?: string): NodeRow | undefined {
+    const query = workspaceId
+      ? prep<[string, string]>("SELECT * FROM nodes WHERE id = ? AND workspace_id = ?").get(id, workspaceId)
+      : prep<[string]>("SELECT * FROM nodes WHERE id = ?").get(id);
+    return query as
       | NodeRow
       | undefined;
   },
 
-  create(input: NodeInput): NodeRow {
+  create(input: NodeInput, workspaceId?: string): NodeRow {
     const id = randomUUID();
     const now = Date.now();
     prep<[
-      string, string, string, string | null, string | null, string | null,
+      string, string | null, string, string, string | null, string | null, string | null,
       string | null, number, SshMode, string | null, string | null,
       string | null, string | null, number, number,
     ]>(
       `INSERT INTO nodes (
-        id, name, hostname, tailscale_id, os, tags,
+        id, workspace_id, name, hostname, tailscale_id, os, tags,
         ssh_user, ssh_port, ssh_mode, credential_id, mac_address,
         wol_broadcast, notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
+      workspaceId ?? null,
       input.name,
       input.hostname,
       input.tailscale_id ?? null,
@@ -77,41 +83,43 @@ export const nodesRepo = {
       now,
       now,
     );
-    return this.get(id)!;
+    return this.get(id, workspaceId)!;
   },
 
-  update(id: string, input: NodeInput): NodeRow | undefined {
+  update(id: string, input: NodeInput, workspaceId?: string): NodeRow | undefined {
     const now = Date.now();
-    prep<[
-      string, string, string | null, string | null, string | null,
-      string | null, number, SshMode, string | null, string | null,
-      string | null, string | null, number, string,
-    ]>(
+    const params = [
+      input.name,
+      input.hostname,
+      input.tailscale_id ?? null,
+      input.os ?? null,
+      input.tags ? JSON.stringify(input.tags) : null,
+      input.ssh_user ?? null,
+      input.ssh_port ?? 22,
+      input.ssh_mode ?? "tailscale",
+      input.credential_id ?? null,
+      input.mac_address ?? null,
+      input.wol_broadcast ?? null,
+      input.notes ?? null,
+      now,
+      id,
+    ];
+    if (workspaceId) params.push(workspaceId);
+    prep(
       `UPDATE nodes SET
         name = ?, hostname = ?, tailscale_id = ?, os = ?, tags = ?,
         ssh_user = ?, ssh_port = ?, ssh_mode = ?, credential_id = ?,
         mac_address = ?, wol_broadcast = ?, notes = ?, updated_at = ?
-      WHERE id = ?`,
-    ).run(
-      input.name,
-      input.hostname,
-      input.tailscale_id ?? null,
-      input.os ?? null,
-      input.tags ? JSON.stringify(input.tags) : null,
-      input.ssh_user ?? null,
-      input.ssh_port ?? 22,
-      input.ssh_mode ?? "tailscale",
-      input.credential_id ?? null,
-      input.mac_address ?? null,
-      input.wol_broadcast ?? null,
-      input.notes ?? null,
-      now,
-      id,
-    );
-    return this.get(id);
+      WHERE id = ?${workspaceId ? " AND workspace_id = ?" : ""}`,
+    ).run(...params);
+    return this.get(id, workspaceId);
   },
 
-  delete(id: string): void {
+  delete(id: string, workspaceId?: string): void {
+    if (workspaceId) {
+      prep<[string, string]>("DELETE FROM nodes WHERE id = ? AND workspace_id = ?").run(id, workspaceId);
+      return;
+    }
     prep<[string]>("DELETE FROM nodes WHERE id = ?").run(id);
   },
 };

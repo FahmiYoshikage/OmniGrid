@@ -1,4 +1,5 @@
 import { getEnv } from "@/lib/env";
+import { integrationSettingsRepo } from "@/lib/db/repos/integration-settings";
 import type {
   TailnetSnapshot,
   TailscaleDevice,
@@ -20,8 +21,8 @@ import type {
 const TTL_MS = 30_000;
 const API_BASE = "https://api.tailscale.com/api/v2";
 
-let cache: TailnetSnapshot | null = null;
-let inflight: Promise<TailnetSnapshot> | null = null;
+const cache = new Map<string, TailnetSnapshot>();
+const inflight = new Map<string, Promise<TailnetSnapshot>>();
 
 function shorten(name: string): string {
   // mybox.tail-1234.ts.net -> mybox
@@ -86,13 +87,16 @@ function mockSnapshot(): TailnetSnapshot {
   return { devices, fetchedAt: now, source: "mock" };
 }
 
-async function fetchFromApi(): Promise<TailnetSnapshot> {
+async function fetchFromApi(workspaceId?: string): Promise<TailnetSnapshot> {
   const env = getEnv();
-  if (!env.TAILSCALE_API_KEY || !env.TAILSCALE_TAILNET) {
+  const settings = workspaceId ? integrationSettingsRepo.revealTailscale(workspaceId) : null;
+  const apiKey = settings?.apiKey || env.TAILSCALE_API_KEY;
+  const tailnet = settings?.tailnet || env.TAILSCALE_TAILNET;
+  if (!apiKey || !tailnet) {
     return mockSnapshot();
   }
-  const url = `${API_BASE}/tailnet/${encodeURIComponent(env.TAILSCALE_TAILNET)}/devices`;
-  const auth = Buffer.from(`${env.TAILSCALE_API_KEY}:`).toString("base64");
+  const url = `${API_BASE}/tailnet/${encodeURIComponent(tailnet)}/devices`;
+  const auth = Buffer.from(`${apiKey}:`).toString("base64");
   const res = await fetch(url, {
     headers: { Authorization: `Basic ${auth}` },
     // Next.js extends fetch; disable per-request cache, we manage our own.
@@ -109,22 +113,30 @@ async function fetchFromApi(): Promise<TailnetSnapshot> {
   };
 }
 
-export async function getTailnet(opts?: { force?: boolean }): Promise<TailnetSnapshot> {
-  const fresh = cache && Date.now() - cache.fetchedAt < TTL_MS;
-  if (fresh && !opts?.force) return cache!;
-  if (inflight) return inflight;          // dedupe concurrent callers
-  inflight = (async () => {
+export async function getTailnet(opts?: { force?: boolean; workspaceId?: string }): Promise<TailnetSnapshot> {
+  const cacheKey = opts?.workspaceId ?? "default";
+  const cached = cache.get(cacheKey);
+  const fresh = cached && Date.now() - cached.fetchedAt < TTL_MS;
+  if (fresh && !opts?.force) return cached;
+  const existingInflight = inflight.get(cacheKey);
+  if (existingInflight) return existingInflight;
+  const promise = (async () => {
     try {
-      const snap = await fetchFromApi();
-      cache = snap;
+      const snap = await fetchFromApi(opts?.workspaceId);
+      cache.set(cacheKey, snap);
       return snap;
     } finally {
-      inflight = null;
+      inflight.delete(cacheKey);
     }
   })();
-  return inflight;
+  inflight.set(cacheKey, promise);
+  return promise;
 }
 
-export function clearTailnetCache(): void {
-  cache = null;
+export function clearTailnetCache(workspaceId?: string): void {
+  if (workspaceId) {
+    cache.delete(workspaceId);
+    return;
+  }
+  cache.clear();
 }

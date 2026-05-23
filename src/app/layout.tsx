@@ -5,6 +5,7 @@ import "@xyflow/react/dist/style.css";
 import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { getSessionUser } from "@/lib/auth/session";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,15 +18,39 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OmniGrid",
-  description: "Single pane of glass for a Tailscale homelab",
+  title: "OmniGrid — Homelab Command Center",
+  description:
+    "Single pane of glass for managing your homelab infrastructure. SSH, topology, proxy, and more.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get current user (null if not logged in)
+  let user: {
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null = null;
+  try {
+    const sessionUser = await getSessionUser();
+    if (sessionUser) {
+      user = {
+        username: sessionUser.username,
+        displayName: sessionUser.displayName,
+        avatarUrl: sessionUser.avatarUrl,
+      };
+    }
+  } catch {
+    // Session lookup may fail during build or when DB is not ready
+  }
+
   return (
     <html
       lang="en"
@@ -33,7 +58,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col overflow-hidden">
         <TooltipProvider delay={150}>
-          <AppShell>{children}</AppShell>
+          <AppShell user={user}>{children}</AppShell>
           <Toaster richColors position="top-right" />
         </TooltipProvider>
       </body>

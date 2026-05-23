@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { getEnv } from "@/lib/env";
 
 /**
@@ -56,4 +56,8 @@ export function decrypt(payload: string): string {
 /** Convenience for one-off generation in scripts (e.g. setup wizard). */
 export function generateMasterKeyHex(): string {
   return randomBytes(32).toString("hex");
+}
+
+export function sha256Hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }
