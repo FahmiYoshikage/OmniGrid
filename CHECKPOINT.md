@@ -993,18 +993,183 @@ Status: stabil.
 - Credential secret/passphrase tidak dikembalikan API. Edit mode: kosongkan field untuk keep existing.
 - `Button` project ini tidak mendukung `asChild`.
 - Workspace baru dibuat secara otomatis saat pertama kali user login (default workspace).
-- `TAILSCALE_API_KEY` dan `TAILSCALE_TAILNET` di env masih diperbolehkan sebagai fallback development.
+- `TAILSCALE_API_KEY` dan `TAILSCALE_TAILNET` tidak lagi dipakai sebagai fallback env; konfigurasi Tailscale wajib melalui Settings per workspace.
 - OAuth state sekarang disimpan di cookie DAN database (dual validation) untuk menghindari invalid_state.
 - Tailscale client mengembalikan `null` jika tidak dikonfigurasi (bukan mock data).
 - NPM Proxy Manager sudah dihapus. Semua referensi diganti ke Cloudflare Zero Trust Connector.
 - Logout menggunakan JSON API + client-side redirect ke animasi page.
 - Login redirect ke `/auth/success` untuk loading animation sebelum masuk dashboard.
 
+## Update Checkpoint 2026-05-24 (Session 7) — Dashboard Route Fix, First-Run Onboarding, Settings Bottom Nav
+
+### 28. Fix Login Stuck di Landing Page
+
+**Root cause:** `/` sebelumnya dipakai untuk dua state sekaligus: landing page saat unauthenticated dan dashboard saat authenticated. Setelah OAuth success animation selesai, browser bisa masih menampilkan landing stale sampai user membuka tab baru/reload manual. Ini terasa seperti "freeze" walau session sebenarnya sudah valid.
+
+**File baru:**
+- `src/app/dashboard/page.tsx`
+- `src/app/api/auth/session/route.ts`
+- `src/app/landing-session-guard.tsx`
+
+**File edit:**
+- `src/app/page.tsx`
+- `src/app/auth/success/page.tsx`
+- `src/app/landing-page.tsx`
+- `src/components/app-shell.tsx`
+
+**Perubahan:**
+- Menambahkan route authenticated khusus: `/dashboard`.
+- `/` sekarang hanya landing/entrypoint:
+  - Jika belum login: render `LandingPage`.
+  - Jika sudah login: server-side redirect ke `/dashboard`.
+- OAuth success animation sekarang melakukan `router.refresh()` lalu `window.location.replace("/dashboard?welcome=1")`.
+- Menambahkan `GET /api/auth/session` untuk session check ringan.
+- Landing page punya `LandingSessionGuard` client component:
+  - Jika landing stale tapi session sudah valid, otomatis replace ke `/dashboard`.
+
+**Alasan:** Memisahkan landing dari dashboard supaya login tidak stuck di halaman lama dan tidak perlu membuka tab baru untuk masuk dashboard.
+
+### 29. First-Run Dashboard Onboarding
+
+**File baru:**
+- `src/app/dashboard-onboarding.tsx`
+
+**File edit:**
+- `src/app/dashboard-overview.tsx`
+
+**Perubahan:**
+- Setelah login sukses, `/dashboard?welcome=1` membuka overlay onboarding ringan.
+- Onboarding menjelaskan tab utama:
+  - Overview
+  - Topology
+  - Nodes
+  - Credentials
+  - Terminal
+  - Settings
+- Bisa klik step langsung, next/back, dan skip.
+- Skip/finish disimpan ke `localStorage` key `omnigrid_onboarding_done`, sehingga tidak muncul terus-menerus.
+
+**Alasan:** User ingin pengalaman seperti AWS: setelah login ada orientasi singkat agar user paham setiap tab dipakai untuk apa.
+
+### 30. Sidebar Settings Dipindah ke Bawah
+
+**File edit:**
+- `src/components/app-shell.tsx`
+
+**Perubahan:**
+- `Overview` sidebar sekarang mengarah ke `/dashboard`, bukan `/`.
+- `Settings` dikeluarkan dari nav utama dan dipindahkan ke area bawah sidebar, tepat di atas user profile/logout.
+
+**Alasan:** Settings lebih cocok sebagai item utilitas/account-workspace, bukan workflow utama.
+
+### 31. Production-State Tailscale Config
+
+**File edit:**
+- `src/lib/tailscale/client.ts`
+- `src/lib/env.ts`
+
+**Perubahan:**
+- `TAILSCALE_API_KEY` dan `TAILSCALE_TAILNET` dihapus dari Zod env schema.
+- Tailscale client tidak lagi membaca fallback env.
+- Tailscale snapshot hanya bekerja jika user/workspace sudah mengisi API key dan tailnet melalui Settings UI.
+- Jika belum dikonfigurasi, `getTailnet()` return `null` dan UI menampilkan empty state konfigurasi.
+
+**Alasan:** SaaS production-state: secret integrasi adalah milik workspace/user, bukan env global platform.
+
+### 32. OAuth Cookie Secure Mode
+
+**File edit:**
+- `src/app/api/auth/github/route.ts`
+- `src/lib/auth/session.ts`
+
+**Perubahan:**
+- Cookie `github_oauth_state` sekarang memakai `secure: redirectUri.startsWith("https://")`.
+- Localhost development tetap bisa menerima cookie non-secure.
+- Production domain HTTPS memakai secure cookie.
+- Cookie `omnigrid_session` juga memakai aturan secure yang sama berdasarkan `OMNIGRID_PUBLIC_URL`.
+
+**Alasan:** Menghindari cookie state hilang di localhost, tapi tetap benar untuk production HTTPS.
+
+### 33. Fix Loop Login Required ↔ Login Page Setelah OAuth
+
+**Root cause:** Setelah OAuth berhasil, client-side navigation masih mempertahankan instance `AppShell` lama yang dibuat sebelum login dengan `user = null`. Karena root layout tidak selalu remount saat navigasi client, protected route bisa menampilkan `Login required` walaupun cookie session sebenarnya sudah valid. Membuka tab baru berhasil karena full page load membuat layout membaca cookie baru.
+
+**File edit:**
+- `src/components/app-shell.tsx`
+- `src/app/login/page.tsx`
+
+**Perubahan:**
+- `AppShell` sekarang menyimpan `currentUser` di client state.
+- Saat membuka protected route dengan `currentUser = null`, `AppShell` melakukan re-check ke `GET /api/auth/session`.
+- Selama re-check tampil screen `Restoring session`, bukan langsung `Login required`.
+- Jika session valid, shell langsung mengisi user dan render dashboard tanpa perlu buka tab baru.
+- `/login` jika sudah authenticated redirect ke `/dashboard`, bukan `/`.
+
+**Alasan:** Menghilangkan loop `Login required → /login → OAuth → Login required` dan memastikan onboarding `/dashboard?welcome=1` tetap muncul setelah login pertama.
+
+### 34. Proxy Host Alignment (Cookie Origin Mismatch Fix)
+
+**Root cause:** `OMNIGRID_PUBLIC_URL=http://localhost:3000` tapi user mengakses lewat `http://0.0.0.0:3000`. Browser memperlakukan kedua host sebagai origin berbeda, jadi cookie `omnigrid_session` yang di-set saat OAuth callback di `localhost` tidak terkirim saat akses lewat `0.0.0.0`. Efeknya: session terlihat kosong walaupun OAuth berhasil.
+
+**File baru:**
+- `src/proxy.ts` (Next.js 16 "proxy" convention, pengganti deprecated `middleware.ts`)
+
+**Perubahan:**
+- Proxy intercepts semua request.
+- Jika `OMNIGRID_PUBLIC_URL` dikonfigurasi dan host request berbeda dari canonical host, redirect 307 ke canonical host.
+- Contoh: `http://0.0.0.0:3000/dashboard` → `http://localhost:3000/dashboard`.
+- Ini memastikan cookie selalu dikirim ke host yang benar.
+- Migrasi dari `middleware.ts` ke `proxy.ts` sesuai Next.js 16 deprecation notice.
+
+**Alasan:** Menyelesaikan masalah "Login required" setelah OAuth berhasil saat user mengakses lewat host yang berbeda dari `OMNIGRID_PUBLIC_URL`.
+
+### Validasi Terbaru
+
+Command:
+
+```bash
+npm run build
+```
+
+Hasil: sukses. TypeScript passed tanpa error. Proxy loaded tanpa deprecation warning.
+
+Status: stabil.
+
+### 35. Docker Deployment (Production-Ready)
+
+**File baru/diupdate:**
+- `Dockerfile` — Multi-stage build (deps → build → runtime) berbasis `node:22-alpine`
+- `docker-compose.yml` — Production compose dengan health check, resource limits, logging
+- `.dockerignore` — Exclude node_modules, .env, .git, build cache
+
+**Arsitektur Docker:**
+```
+Stage 1 (deps)    – npm ci
+Stage 2 (builder) – next build + prune dev
+Stage 3 (runner)  – minimal alpine runtime
+```
+
+**Fitur docker-compose:**
+- Named volume `omnigrid_data` untuk SQLite persistence
+- Health check via `/api/auth/session`
+- Resource limits (512MB RAM, 1 CPU)
+- JSON file logging dengan rotation (10MB x 3 files)
+- `restart: unless-stopped`
+- Port configurable via env `OMNIGRID_PORT`
+- Non-root user (`omnigrid:1001`)
+- `tini` init process untuk proper signal handling
+
+**Cara deploy:**
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
 ## Status Akhir Checkpoint
 
-Status: stabil setelah build.
+Status: stabil. Build passed. Docker production-ready.
 
-Command validasi terakhir:
+Command validasi:
 
 ```bash
 npm run build

@@ -30,7 +30,10 @@ export default function AuthSuccessPage() {
     timers.push(setTimeout(() => setFadeOut(true), STEPS.length * 700 + 300));
 
     // Navigate to dashboard
-    timers.push(setTimeout(() => router.replace("/"), STEPS.length * 700 + 800));
+    timers.push(setTimeout(() => {
+      router.refresh();
+      window.location.replace("/dashboard?welcome=1");
+    }, STEPS.length * 700 + 800));
 
     return () => timers.forEach(clearTimeout);
   }, [router]);

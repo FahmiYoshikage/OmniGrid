@@ -10,9 +10,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  // If already logged in, redirect to home
   const user = await getSessionUser();
-  if (user) redirect("/");
+  if (user) redirect("/dashboard");
 
   const params = await searchParams;
   const error = params.error;

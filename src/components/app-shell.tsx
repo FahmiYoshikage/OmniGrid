@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -29,12 +29,17 @@ type NavItem = {
   soon?: boolean;
 };
 
+type AppShellUser = {
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
 const NAV: NavItem[] = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/nodes", label: "Nodes", icon: Server },
   { href: "/credentials", label: "Credentials", icon: KeyRound },
-  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/terminal", label: "Terminal", icon: Terminal },
   { href: "/tunnels", label: "Cloudflare Tunnel", icon: Globe, soon: true },
   { href: "/uptime", label: "Uptime", icon: Activity, soon: true },
@@ -43,23 +48,68 @@ const NAV: NavItem[] = [
   { href: "/wol", label: "Wake-on-LAN", icon: Power, soon: true },
 ];
 
+const BOTTOM_NAV: NavItem[] = [
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
 interface AppShellProps {
   children: React.ReactNode;
-  user?: {
-    username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-  } | null;
+  user?: AppShellUser | null;
 }
 
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
+  const [currentUser, setCurrentUser] = useState<AppShellUser | null>(user ?? null);
+  const [checkingSession, setCheckingSession] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(Boolean(user));
 
-  if (pathname === "/login" || pathname?.startsWith("/auth/") || (pathname === "/" && !user)) {
+  useEffect(() => {
+    setCurrentUser(user ?? null);
+    setSessionChecked(Boolean(user));
+  }, [user]);
+
+  useEffect(() => {
+    const publicRoute = pathname === "/login" || pathname?.startsWith("/auth/") || pathname === "/";
+    if (publicRoute || currentUser || sessionChecked) return;
+
+    let cancelled = false;
+    setCheckingSession(true);
+
+    async function refreshSession() {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          authenticated?: boolean;
+          user?: AppShellUser | null;
+        };
+        if (data.authenticated && data.user) {
+          setCurrentUser(data.user);
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingSession(false);
+          setSessionChecked(true);
+        }
+      }
+    }
+
+    void refreshSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, pathname, sessionChecked]);
+
+  if (pathname === "/login" || pathname?.startsWith("/auth/") || (pathname === "/" && !currentUser)) {
     return <>{children}</>;
   }
 
-  if (!user) {
+  if (!currentUser && (checkingSession || !sessionChecked)) {
+    return <SessionRefreshScreen />;
+  }
+
+  if (!currentUser) {
     return <AccessRequired />;
   }
 
@@ -116,28 +166,55 @@ export function AppShell({ children, user }: AppShellProps) {
           })}
         </nav>
 
-        {/* User section at bottom */}
         <div className="relative mt-auto p-3">
-          {user ? (
+          <div className="mb-3 flex flex-col gap-1 border-b border-white/10 pb-3">
+            {BOTTOM_NAV.map((item) => {
+              const active = pathname?.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-all duration-200",
+                    active
+                      ? "bg-gradient-to-r from-cyan-400/20 to-emerald-400/10 text-white shadow-inner ring-1 ring-cyan-300/20"
+                      : "text-sidebar-foreground/55 hover:bg-white/5 hover:text-white",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid h-8 w-8 place-items-center rounded-xl transition-colors",
+                      active ? "bg-cyan-300/15 text-cyan-200" : "bg-white/[0.03] text-sidebar-foreground/45 group-hover:text-cyan-200",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+          {currentUser ? (
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
               <div className="flex items-center gap-3">
-                {user.avatarUrl ? (
+                {currentUser.avatarUrl ? (
                   <img
-                    src={user.avatarUrl}
-                    alt={user.username}
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.username}
                     className="h-9 w-9 rounded-xl ring-1 ring-white/10"
                   />
                 ) : (
                   <div className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-300/15 text-xs font-bold text-cyan-200">
-                    {user.username.charAt(0).toUpperCase()}
+                    {currentUser.username.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="flex flex-1 flex-col truncate leading-tight">
                   <span className="truncate text-sm font-medium">
-                    {user.displayName || user.username}
+                    {currentUser.displayName || currentUser.username}
                   </span>
                   <span className="truncate text-[11px] text-muted-foreground">
-                    @{user.username}
+                    @{currentUser.username}
                   </span>
                 </div>
                 <LogoutButton />
@@ -203,6 +280,20 @@ function AccessRequired() {
         >
           Sign in with GitHub
         </Link>
+      </div>
+    </div>
+  );
+}
+
+function SessionRefreshScreen() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-slate-950 px-6 text-white">
+      <div className="max-w-md rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl shadow-black/30">
+        <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-2 border-cyan-200/20 border-t-cyan-200" />
+        <h1 className="text-2xl font-bold">Restoring session</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          Your GitHub login succeeded. OmniGrid is refreshing the dashboard session.
+        </p>
       </div>
     </div>
   );

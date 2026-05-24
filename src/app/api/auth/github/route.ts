@@ -15,9 +15,10 @@ import { getDb } from "@/lib/db/client";
 export async function GET() {
   const github = getGitHub();
   const state = generateState();
+  const redirectUri = getOAuthRedirectUri();
 
   const url = github.createAuthorizationURL(state, ["read:user", "user:email"]);
-  url.searchParams.set("redirect_uri", getOAuthRedirectUri());
+  url.searchParams.set("redirect_uri", redirectUri);
 
   // Store state in database with 10-minute expiry
   const db = getDb();
@@ -29,7 +30,7 @@ export async function GET() {
   const cookieStore = await cookies();
   cookieStore.set("github_oauth_state", state, {
     httpOnly: true,
-    secure: false, // localhost dev — changed to false to prevent cookie loss
+    secure: redirectUri.startsWith("https://"),
     sameSite: "lax",
     path: "/",
     maxAge: 600,

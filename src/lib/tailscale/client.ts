@@ -1,4 +1,3 @@
-import { getEnv } from "@/lib/env";
 import { integrationSettingsRepo } from "@/lib/db/repos/integration-settings";
 import type {
   TailnetSnapshot,
@@ -58,10 +57,9 @@ function normalise(raw: TailscaleDeviceRaw): TailscaleDevice {
 }
 
 async function fetchFromApi(workspaceId?: string): Promise<TailnetSnapshot | null> {
-  const env = getEnv();
   const settings = workspaceId ? integrationSettingsRepo.revealTailscale(workspaceId) : null;
-  const apiKey = settings?.apiKey || env.TAILSCALE_API_KEY;
-  const tailnet = settings?.tailnet || env.TAILSCALE_TAILNET;
+  const apiKey = settings?.apiKey;
+  const tailnet = settings?.tailnet;
   if (!apiKey || !tailnet) {
     // Not configured — return null (no mock data)
     return null;

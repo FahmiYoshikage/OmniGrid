@@ -32,9 +32,11 @@ export async function createSession(userId: string): Promise<string> {
   ).run(sessionId, userId, expiresAt, now);
 
   const cookieStore = await cookies();
+  const secureCookie =
+    process.env.OMNIGRID_PUBLIC_URL?.startsWith("https://") ?? process.env.NODE_ENV === "production";
   cookieStore.set(SESSION_COOKIE, encrypt(sessionToken), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookie,
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE_MS / 1000,

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, KeyRound, Network, ShieldCheck, TerminalSquare, Zap } from "lucide-react";
+import { LandingSessionGuard } from "./landing-session-guard";
 
 const FEATURES = [
   {
@@ -23,6 +24,7 @@ const FEATURES = [
 export function LandingPage() {
   return (
     <main className="min-h-screen overflow-hidden bg-slate-950 text-white">
+      <LandingSessionGuard />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-[-20rem] h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-cyan-400/15 blur-3xl" />
         <div className="absolute bottom-[-18rem] right-[-12rem] h-[34rem] w-[34rem] rounded-full bg-emerald-400/10 blur-3xl" />

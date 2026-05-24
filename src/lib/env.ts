@@ -24,13 +24,6 @@ const EnvSchema = z.object({
 
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
-
-  // Tailscale (fallback for development, production uses per-workspace settings).
-  TAILSCALE_API_KEY: z.string().optional(),
-  TAILSCALE_TAILNET: z.string().optional(),
-
-  // Webhook alerting (optional).
-  ALERT_WEBHOOK_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

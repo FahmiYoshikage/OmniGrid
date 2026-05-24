@@ -1,24 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Suspense } from "react";
 
 function LogoutContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const name = searchParams.get("name") || "";
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
     const t1 = setTimeout(() => setFadeOut(true), 2500);
-    const t2 = setTimeout(() => router.replace("/"), 3000);
+    const t2 = setTimeout(() => {
+      window.location.replace("/");
+    }, 3000);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [router]);
+  }, []);
 
   return (
     <div

@@ -5,10 +5,11 @@ import { getTailnet } from "@/lib/tailscale/client";
 import { nodesRepo } from "@/lib/db/repos/nodes";
 import { auditRepo } from "@/lib/db/repos/audit";
 import { requireSessionUser } from "@/lib/auth/access";
+import { DashboardOnboarding } from "./dashboard-onboarding";
 import { Activity, Server, Network, ScrollText, ArrowUpRight, Settings } from "lucide-react";
 import Link from "next/link";
 
-export async function DashboardOverview() {
+export async function DashboardOverview({ showOnboarding = false }: { showOnboarding?: boolean }) {
   const user = await requireSessionUser();
   const [snapshot] = await Promise.all([getTailnet({ workspaceId: user.workspaceId }).catch(() => null)]);
   const localNodes = nodesRepo.list(user.workspaceId);
@@ -19,6 +20,7 @@ export async function DashboardOverview() {
 
   return (
     <div className="flex min-h-full flex-col">
+      <DashboardOnboarding open={showOnboarding} />
       <PageHeader
         title="Overview"
         description="Health snapshot of your tailnet, fleet, and recent activity."
