@@ -1165,9 +1165,30 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+### 36. Terminal Node Cleanup + Faster OAuth Success Redirect
+
+**Masalah:**
+- Dropdown node di `/terminal` masih menampilkan node lama karena page itu mengambil `nodesRepo.list()` tanpa filter workspace.
+- State tab terminal di client masih bisa menyimpan tab lama yang node-nya sudah tidak valid.
+- Setelah OAuth berhasil, halaman `/auth/success` menahan redirect terlalu lama sebelum masuk ke dashboard.
+
+**Perubahan:**
+- `src/app/terminal/page.tsx`
+  - Mengganti query node dari global menjadi `nodesRepo.list(user.workspaceId)`.
+- `src/app/terminal/terminal-workspace.tsx`
+  - Membersihkan tab SSH aktif, node pending, dan session buffer jika node sudah tidak ada di workspace aktif.
+- `src/app/auth/success/page.tsx`
+  - Mempercepat animasi sukses login dengan durasi step yang lebih singkat.
+  - Menghapus `router.refresh()` yang tidak diperlukan sebelum hard redirect ke `/dashboard?welcome=1`.
+
+**Dampak:**
+- Dropdown terminal sekarang hanya menampilkan node milik workspace aktif.
+- Tab lama yang tersisa dari state client tidak lagi “nyangkut”.
+- Redirect pasca-login terasa jauh lebih cepat sambil tetap mempertahankan animasi singkat.
+
 ## Status Akhir Checkpoint
 
-Status: stabil. Build passed. Docker production-ready.
+Status: stabil. Build passed. Terminal cleanup dan auth redirect optimization selesai.
 
 Command validasi:
 

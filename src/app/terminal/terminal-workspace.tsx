@@ -81,6 +81,23 @@ export function TerminalWorkspace({
   }, [tabs, active]);
 
   useEffect(() => {
+    const validNodeIds = new Set(nodes.map((n) => n.id));
+    setTabs((current) => {
+      if (current.every((tab) => validNodeIds.has(tab.nodeId))) return current;
+      const next = current.filter((tab) => validNodeIds.has(tab.nodeId));
+      for (const tab of current) {
+        if (!validNodeIds.has(tab.nodeId) && tab.sessionId) {
+          getSocket().emit("close", { sessionId: tab.sessionId });
+          sessionBuffers.delete(tab.sessionId);
+        }
+      }
+      return next;
+    });
+    setActive((current) => (current && tabs.some((tab) => tab.key === current && validNodeIds.has(tab.nodeId)) ? current : null));
+    setPendingNodeId((current) => (current && validNodeIds.has(current) ? current : ""));
+  }, [nodes, tabs]);
+
+  useEffect(() => {
     if (openedInitialRef.current || !initialNodeId) return;
     if (!nodes.some((n) => n.id === initialNodeId)) return;
     openedInitialRef.current = true;

@@ -10,9 +10,9 @@ export default async function TerminalPage({
 }: {
   searchParams: Promise<{ node?: string }>;
 }) {
-  await requireSessionUser();
+  const user = await requireSessionUser();
   const { node } = await searchParams;
-  const nodes = nodesRepo.list().map((n) => ({
+  const nodes = nodesRepo.list(user.workspaceId).map((n) => ({
     id: n.id,
     name: n.name,
     hostname: n.hostname,

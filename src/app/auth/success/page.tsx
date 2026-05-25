@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 const STEPS = [
@@ -11,32 +10,31 @@ const STEPS = [
   { label: "Preparing dashboard", icon: "✨" },
 ];
 
+const STEP_MS = 220;
+const FADE_BUFFER_MS = 120;
+const REDIRECT_BUFFER_MS = 220;
+
 export default function AuthSuccessPage() {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    
-    // Animate through steps
+
     STEPS.forEach((_, i) => {
       if (i > 0) {
-        timers.push(setTimeout(() => setCurrentStep(i), i * 700));
+        timers.push(setTimeout(() => setCurrentStep(i), i * STEP_MS));
       }
     });
 
-    // Start fade out
-    timers.push(setTimeout(() => setFadeOut(true), STEPS.length * 700 + 300));
+    timers.push(setTimeout(() => setFadeOut(true), STEPS.length * STEP_MS + FADE_BUFFER_MS));
 
-    // Navigate to dashboard
     timers.push(setTimeout(() => {
-      router.refresh();
       window.location.replace("/dashboard?welcome=1");
-    }, STEPS.length * 700 + 800));
+    }, STEPS.length * STEP_MS + FADE_BUFFER_MS + REDIRECT_BUFFER_MS));
 
     return () => timers.forEach(clearTimeout);
-  }, [router]);
+  }, []);
 
   return (
     <div
