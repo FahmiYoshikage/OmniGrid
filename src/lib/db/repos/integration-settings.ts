@@ -27,6 +27,7 @@ export interface TailscaleSettingsSecret extends TailscaleSettingsPublic {
 export interface CloudflareSettingsPublic {
   accountId: string;
   hasTunnelToken: boolean;
+  hasApiToken: boolean;
   updatedAt: number | null;
 }
 
@@ -102,10 +103,12 @@ export const integrationSettingsRepo = {
   getCloudflarePublic(workspaceId: string): CloudflareSettingsPublic {
     const accountId = getSetting(workspaceId, "cloudflare", "account_id");
     const tunnelToken = getSetting(workspaceId, "cloudflare", "tunnel_token");
+    const apiToken = getSetting(workspaceId, "cloudflare", "api_token");
     return {
       accountId: accountId ? decrypt(accountId.value_enc) : "",
       hasTunnelToken: Boolean(tunnelToken),
-      updatedAt: Math.max(accountId?.updated_at ?? 0, tunnelToken?.updated_at ?? 0) || null,
+      hasApiToken: Boolean(apiToken),
+      updatedAt: Math.max(accountId?.updated_at ?? 0, tunnelToken?.updated_at ?? 0, apiToken?.updated_at ?? 0) || null,
     };
   },
 

@@ -18,6 +18,7 @@ interface TailscaleSettings {
 interface CloudflareSettings {
   accountId: string;
   hasTunnelToken: boolean;
+  hasApiToken: boolean;
   updatedAt: number | null;
 }
 
@@ -31,11 +32,12 @@ export function SettingsClient() {
   const [tsSaving, setTsSaving] = useState(false);
 
   // Cloudflare state
-  const [cfSettings, setCfSettings] = useState<CloudflareSettings>({ accountId: "", hasTunnelToken: false, updatedAt: null });
+  const [cfSettings, setCfSettings] = useState<CloudflareSettings>({ accountId: "", hasTunnelToken: false, hasApiToken: false, updatedAt: null });
   const [cfAccountId, setCfAccountId] = useState("");
   const [cfTunnelToken, setCfTunnelToken] = useState("");
   const [cfApiToken, setCfApiToken] = useState("");
   const [clearCfToken, setClearCfToken] = useState(false);
+  const [clearCfApiToken, setClearCfApiToken] = useState(false);
   const [cfLoading, setCfLoading] = useState(true);
   const [cfSaving, setCfSaving] = useState(false);
 
@@ -106,6 +108,7 @@ export function SettingsClient() {
           tunnelToken: cfTunnelToken || undefined,
           apiToken: cfApiToken || undefined,
           clearTunnelToken: clearCfToken,
+          clearApiToken: clearCfApiToken,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -114,6 +117,7 @@ export function SettingsClient() {
       setCfTunnelToken("");
       setCfApiToken("");
       setClearCfToken(false);
+      setClearCfApiToken(false);
       toast.success("Cloudflare settings saved");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save Cloudflare settings");
@@ -209,8 +213,8 @@ export function SettingsClient() {
             <Cloud className="h-4 w-4 text-orange-200" />
             Cloudflare Zero Trust
           </CardTitle>
-          <Badge variant={cfSettings.hasTunnelToken ? "default" : "secondary"}>
-            {cfSettings.hasTunnelToken ? "Tunnel configured" : "Not configured"}
+          <Badge variant={cfSettings.hasTunnelToken && cfSettings.hasApiToken ? "default" : "secondary"}>
+            {cfSettings.hasTunnelToken && cfSettings.hasApiToken ? "Monitoring ready" : "Partial setup"}
           </Badge>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -239,6 +243,9 @@ export function SettingsClient() {
                 onChange={(event) => setCfTunnelToken(event.target.value)}
                 disabled={cfLoading || cfSaving || clearCfToken}
               />
+              <p className="text-xs leading-5 text-muted-foreground">
+                {cfSettings.hasTunnelToken ? "Tunnel token saved for this workspace." : "Needed to run cloudflared with a remotely managed tunnel."}
+              </p>
             </div>
           </div>
           <div className="space-y-2">
@@ -246,13 +253,13 @@ export function SettingsClient() {
             <Input
               id="cfApiToken"
               type="password"
-              placeholder="For monitoring domains assigned to the tunnel"
+              placeholder={cfSettings.hasApiToken ? "Leave empty to keep current API token" : "For monitoring domains and published apps"}
               value={cfApiToken}
               onChange={(event) => setCfApiToken(event.target.value)}
-              disabled={cfLoading || cfSaving}
+              disabled={cfLoading || cfSaving || clearCfApiToken}
             />
             <p className="text-xs leading-5 text-muted-foreground">
-              Optional. Used to list and monitor domains assigned to your Cloudflare tunnel. Requires <code className="text-cyan-200/80">Zone:Read</code> permission.
+              Optional but recommended. Used to list tunnels, published hostnames, Access apps, zones, and DNS records. Ideal permissions: <code className="text-cyan-200/80">Cloudflare Tunnel:Read/Edit</code>, <code className="text-cyan-200/80">Access: Apps and Policies Read</code>, <code className="text-cyan-200/80">Zone:Read</code>, and <code className="text-cyan-200/80">DNS:Read/Edit</code>.
             </p>
           </div>
           <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-muted-foreground">
@@ -263,6 +270,15 @@ export function SettingsClient() {
               className="h-4 w-4 accent-orange-300"
             />
             Clear saved tunnel token on save
+          </label>
+          <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={clearCfApiToken}
+              onChange={(event) => setClearCfApiToken(event.target.checked)}
+              className="h-4 w-4 accent-orange-300"
+            />
+            Clear saved API token on save
           </label>
           <div className="flex gap-2">
             <Button onClick={saveCloudflare} disabled={cfLoading || cfSaving || !cfAccountId.trim()}>

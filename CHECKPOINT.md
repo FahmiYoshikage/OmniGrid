@@ -1206,9 +1206,51 @@ docker compose up -d --build
 - Workspace settings yang sebelumnya hanya tersimpan di Settings kini punya tampilan operasional yang jelas.
 - Jalur migrasi dari reverse proxy ke Cloudflare Zero Trust jadi lebih konkret di UI.
 
+### 38. Cloudflare API Monitoring + Published Hostname Management
+
+**Masalah:**
+- Integrasi Cloudflare sebelumnya baru sebatas penyimpanan credential dan halaman panduan statis.
+- Belum ada monitoring tunnel, inventory domain/DNS, daftar Access apps, atau kemampuan publish hostname langsung dari OmniGrid.
+- Status token Cloudflare juga belum sepenuhnya terlihat di UI Settings.
+
+**Perubahan:**
+- `src/lib/cloudflare/client.ts`
+  - Menambahkan client server-side untuk Cloudflare API.
+  - Mendukung list tunnel, baca konfigurasi ingress tunnel, list Access applications, list zones, list DNS records, serta update konfigurasi tunnel.
+  - Menambahkan sinkronisasi DNS CNAME ke `<tunnel-id>.cfargotunnel.com` saat publish hostname baru dari OmniGrid.
+- `src/lib/cloudflare/types.ts`
+  - Menambahkan type bersama untuk overview tunnel/domain/DNS/Access apps dan hasil publish hostname.
+- `src/app/api/cloudflare/overview/route.ts`
+  - Menyediakan endpoint internal untuk agregasi monitoring Cloudflare per workspace.
+- `src/app/api/cloudflare/published-apps/route.ts`
+  - Menyediakan endpoint internal untuk membuat atau memperbarui published hostname pada tunnel.
+- `src/app/tunnels/page.tsx`
+  - Diubah menjadi wrapper server-side yang meneruskan workspace settings dan canonical public origin ke client dashboard.
+- `src/app/tunnels/tunnels-client.tsx`
+  - Menambahkan dashboard interaktif untuk:
+    - readiness Cloudflare
+    - statistik tunnel/published hostnames/Access apps/zones/DNS
+    - inventory semua tunnel dan hostname yang dipublish
+    - inventory zones dan DNS CNAME
+    - inventory Access apps
+    - form publish hostname baru langsung dari OmniGrid
+- `src/app/settings/settings-client.tsx`
+  - Menampilkan status `hasApiToken`
+  - Menambahkan opsi clear API token secara terpisah
+  - Memperjelas permission recommendation untuk Cloudflare API token
+- `src/lib/db/repos/integration-settings.ts`
+  - Menambahkan `hasApiToken` pada public Cloudflare settings agar UI bisa membaca status token dengan benar.
+
+**Dampak:**
+- OmniGrid sekarang bisa memonitor semua tunnel yang terlihat oleh Cloudflare API token workspace.
+- Published hostnames, Access apps, zones, dan DNS records sekarang tampil rapi di satu dashboard.
+- User bisa menambah atau memperbarui published hostname tunnel langsung dari OmniGrid.
+- Jika zone cocok dan permission memadai, DNS CNAME ikut dibuat atau diupdate otomatis.
+- Warning partial visibility muncul bila token hanya punya sebagian permission, jadi troubleshooting lebih mudah.
+
 ## Status Akhir Checkpoint
 
-Status: stabil. Build passed. Cloudflare Tunnel tab aktif dan usable.
+Status: stabil. Build passed. Cloudflare monitoring dan published hostname management aktif.
 
 Command validasi:
 
