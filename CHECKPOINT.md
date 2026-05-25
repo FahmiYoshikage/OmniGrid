@@ -1186,9 +1186,29 @@ docker compose up -d --build
 - Tab lama yang tersisa dari state client tidak lagi “nyangkut”.
 - Redirect pasca-login terasa jauh lebih cepat sambil tetap mempertahankan animasi singkat.
 
+### 37. Cloudflare Tunnel Tab Activated
+
+**Masalah:**
+- Sidebar sudah punya item `Cloudflare Tunnel`, tetapi masih ditandai `soon` dan belum punya route `/tunnels`.
+- Settings Cloudflare Zero Trust sudah ada, tetapi belum ada halaman operasional yang memanfaatkan data workspace tersebut.
+
+**Perubahan:**
+- `src/app/tunnels/page.tsx`
+  - Menambahkan halaman server-side baru untuk Cloudflare Tunnel.
+  - Membaca `accountId`, status token, dan `OMNIGRID_PUBLIC_URL` untuk menampilkan readiness status.
+  - Menyediakan setup checklist dan blueprint sidecar `cloudflared` untuk deployment Docker.
+  - Menampilkan operational notes agar host publik, OAuth, dan target service tetap konsisten.
+- `src/components/app-shell.tsx`
+  - Menghapus label `soon` dari navigasi `Cloudflare Tunnel` sehingga route sekarang aktif.
+
+**Dampak:**
+- Tab Cloudflare Tunnel sekarang benar-benar bisa dibuka dan dipakai sebagai panduan deployment.
+- Workspace settings yang sebelumnya hanya tersimpan di Settings kini punya tampilan operasional yang jelas.
+- Jalur migrasi dari reverse proxy ke Cloudflare Zero Trust jadi lebih konkret di UI.
+
 ## Status Akhir Checkpoint
 
-Status: stabil. Build passed. Terminal cleanup dan auth redirect optimization selesai.
+Status: stabil. Build passed. Cloudflare Tunnel tab aktif dan usable.
 
 Command validasi:
 

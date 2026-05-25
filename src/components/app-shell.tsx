@@ -41,7 +41,7 @@ const NAV: NavItem[] = [
   { href: "/nodes", label: "Nodes", icon: Server },
   { href: "/credentials", label: "Credentials", icon: KeyRound },
   { href: "/terminal", label: "Terminal", icon: Terminal },
-  { href: "/tunnels", label: "Cloudflare Tunnel", icon: Globe, soon: true },
+  { href: "/tunnels", label: "Cloudflare Tunnel", icon: Globe },
   { href: "/uptime", label: "Uptime", icon: Activity, soon: true },
   { href: "/runbooks", label: "Runbooks", icon: PlayCircle, soon: true },
   { href: "/audit", label: "Audit Log", icon: ScrollText, soon: true },
