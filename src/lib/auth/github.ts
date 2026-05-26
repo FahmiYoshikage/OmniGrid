@@ -1,15 +1,6 @@
 import { GitHub } from "arctic";
 import { getEnv } from "@/lib/env";
 
-/**
- * GitHub OAuth 2.0 client via arctic.
- *
- * Required env vars:
- *   GITHUB_CLIENT_ID
- *   GITHUB_CLIENT_SECRET
- *   OMNIGRID_PUBLIC_URL (used for dynamic redirect_uri)
- */
-
 let _github: GitHub | null = null;
 let _lastRedirectUri: string | null = null;
 
@@ -17,7 +8,7 @@ export function getGitHub(): GitHub {
   const env = getEnv();
   const clientId = env.GITHUB_CLIENT_ID;
   const clientSecret = env.GITHUB_CLIENT_SECRET;
-  const redirectUri = getOAuthRedirectUri();
+  const redirectUri = getGitHubOAuthRedirectUri();
 
   if (!clientId || !clientSecret) {
     throw new Error(
@@ -33,7 +24,7 @@ export function getGitHub(): GitHub {
   return _github;
 }
 
-export function getOAuthRedirectUri(): string {
+export function getGitHubOAuthRedirectUri(): string {
   const env = getEnv();
   const base = env.OMNIGRID_PUBLIC_URL?.replace(/\/$/, "");
   if (!base) {
@@ -51,20 +42,50 @@ export interface GitHubUser {
   name: string | null;
   email: string | null;
   avatar_url: string;
+  verified_email?: string | null;
 }
 
-/**
- * Fetch the authenticated GitHub user profile using an access token.
- */
 export async function fetchGitHubUser(accessToken: string): Promise<GitHubUser> {
-  const res = await fetch("https://api.github.com/user", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+  const [userRes, emailRes] = await Promise.all([
+    fetch("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    }),
+    fetch("https://api.github.com/user/emails", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    }),
+  ]);
+
+  if (!userRes.ok) {
+    throw new Error(`GitHub API error: ${userRes.status} ${userRes.statusText}`);
   }
-  return res.json() as Promise<GitHubUser>;
+
+  const user = (await userRes.json()) as GitHubUser;
+
+  if (!emailRes.ok) {
+    return user;
+  }
+
+  const emails = (await emailRes.json()) as Array<{
+    email: string;
+    primary: boolean;
+    verified: boolean;
+  }>;
+
+  const verifiedEmail = emails.find((entry) => entry.primary && entry.verified)?.email
+    ?? emails.find((entry) => entry.verified)?.email
+    ?? user.email;
+
+  return {
+    ...user,
+    email: verifiedEmail ?? user.email,
+    verified_email: verifiedEmail ?? null,
+  };
 }

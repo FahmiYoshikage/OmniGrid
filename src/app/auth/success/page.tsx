@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
-const STEPS = [
-  { label: "Authenticating with GitHub", icon: "🔐" },
+const BASE_STEPS = [
+  { label: "Authenticating securely", icon: "🔐" },
   { label: "Loading your workspace", icon: "📦" },
   { label: "Syncing integrations", icon: "🔄" },
   { label: "Preparing dashboard", icon: "✨" },
@@ -17,24 +17,34 @@ const REDIRECT_BUFFER_MS = 220;
 export default function AuthSuccessPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
+  const [provider, setProvider] = useState("account");
+  const steps = useMemo(
+    () => [{ label: `Authenticating with ${provider === "email" ? "Email Link" : provider.charAt(0).toUpperCase() + provider.slice(1)}`, icon: "🔐" }, ...BASE_STEPS.slice(1)],
+    [provider],
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setProvider(params.get("provider") ?? "account");
+  }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    STEPS.forEach((_, i) => {
+    steps.forEach((_, i) => {
       if (i > 0) {
         timers.push(setTimeout(() => setCurrentStep(i), i * STEP_MS));
       }
     });
 
-    timers.push(setTimeout(() => setFadeOut(true), STEPS.length * STEP_MS + FADE_BUFFER_MS));
+    timers.push(setTimeout(() => setFadeOut(true), steps.length * STEP_MS + FADE_BUFFER_MS));
 
     timers.push(setTimeout(() => {
       window.location.replace("/dashboard?welcome=1");
-    }, STEPS.length * STEP_MS + FADE_BUFFER_MS + REDIRECT_BUFFER_MS));
+    }, steps.length * STEP_MS + FADE_BUFFER_MS + REDIRECT_BUFFER_MS));
 
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [steps]);
 
   return (
     <div
@@ -81,7 +91,7 @@ export default function AuthSuccessPage() {
           {/* Steps progress */}
           <div className="px-8 py-8">
             <div className="space-y-3">
-              {STEPS.map((step, i) => {
+              {steps.map((step, i) => {
                 const isActive = i === currentStep;
                 const isDone = i < currentStep;
                 return (
@@ -109,7 +119,7 @@ export default function AuthSuccessPage() {
             <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-700 ease-out"
-                style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
               />
             </div>
           </div>

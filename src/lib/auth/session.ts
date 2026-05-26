@@ -9,7 +9,6 @@ const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export interface SessionUser {
   id: string;
-  githubId: number;
   username: string;
   displayName: string | null;
   email: string | null;
@@ -65,7 +64,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT u.id, u.github_id, u.username, u.display_name, u.email, u.avatar_url
+      `SELECT u.id, u.username, u.display_name, u.email, u.avatar_url
        FROM auth_sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.id = ? AND s.expires_at > ?`
@@ -73,7 +72,6 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     .get(sessionId, Date.now()) as
     | {
         id: string;
-        github_id: number;
         username: string;
         display_name: string | null;
         email: string | null;
@@ -90,7 +88,6 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const workspace = workspacesRepo.ensureDefaultForUser(row.id, row.username);
   return {
     id: row.id,
-    githubId: row.github_id,
     username: row.username,
     displayName: row.display_name,
     email: row.email,

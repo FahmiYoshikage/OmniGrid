@@ -1259,3 +1259,164 @@ npm run build
 ```
 
 Hasil: sukses.
+
+## Update Checkpoint 2026-05-26 (Session 8) — Multi-Auth, Linked Login Methods, Dashboard Cloudflare Summary, README Refresh
+
+### 39. Multi-Provider Authentication Foundation
+
+**File baru:**
+- `src/lib/db/migrations/005_multi_auth.sql`
+- `src/lib/auth/accounts.ts`
+- `src/lib/auth/availability.ts`
+- `src/lib/auth/google.ts`
+- `src/lib/auth/oauth-requests.ts`
+
+**File edit:**
+- `src/lib/auth/github.ts`
+- `src/lib/auth/user.ts`
+- `src/lib/auth/session.ts`
+- `src/lib/env.ts`
+
+**Perubahan:**
+- Menambahkan migration `005_multi_auth.sql` untuk tabel:
+  - `auth_identities` untuk relasi banyak provider ke satu user OmniGrid.
+  - `auth_oauth_requests` untuk state OAuth + PKCE verifier.
+  - `auth_email_tokens` untuk magic-link login/email linking.
+- Menambahkan helper generic `resolveUserForSignIn()` dan `linkIdentityToUser()`.
+- Session user dibuat provider-agnostic; tidak lagi GitHub-centric.
+- Menambahkan `getAuthAvailability()` agar UI/server tahu provider mana yang aktif berdasarkan env.
+- Menambahkan Google OAuth helper dengan Arctic dan PKCE.
+- Menambahkan request store OAuth generic untuk GitHub dan Google.
+- `fetchGitHubUser()` diperluas agar membawa verified email untuk linking akun yang lebih aman.
+
+**Dampak:**
+- Satu akun OmniGrid sekarang bisa login via GitHub, Google, email magic link, atau kombinasi beberapa metode sekaligus.
+- Existing user GitHub tetap kompatibel dan bisa ditautkan dengan provider lain.
+
+### 40. GitHub, Google, dan Email Magic-Link Routes
+
+**File baru:**
+- `src/app/api/auth/google/route.ts`
+- `src/app/api/auth/google/callback/route.ts`
+- `src/app/api/auth/email/request/route.ts`
+- `src/app/api/auth/email/verify/route.ts`
+- `src/app/api/auth/methods/route.ts`
+- `src/lib/auth/mailer.ts`
+- `src/types/nodemailer.d.ts`
+
+**File edit:**
+- `src/app/api/auth/github/route.ts`
+- `src/app/api/auth/github/callback/route.ts`
+- `package.json`
+- `package-lock.json`
+
+**Perubahan:**
+- `GET /api/auth/github` sekarang memakai generic OAuth request storage dan mendukung mode `intent=link`.
+- `GET /api/auth/github/callback` sekarang bisa:
+  - login normal seperti sebelumnya
+  - atau menautkan identitas GitHub ke user yang sedang login
+- Menambahkan `GET /api/auth/google` dan callback Google OAuth dengan PKCE.
+- Menambahkan flow passwordless email:
+  - `POST /api/auth/email/request` untuk kirim magic link
+  - `GET /api/auth/email/verify` untuk consume token, login, atau link email
+- Menambahkan `GET /api/auth/methods` untuk membaca identity yang sudah linked + availability provider.
+- Menambahkan `nodemailer` dependency dan Gmail SMTP sender helper untuk email auth.
+
+**Dampak:**
+- Backend multi-auth sekarang end-to-end berjalan untuk 3 metode login.
+- Email login tidak menyimpan password; hanya one-time secure link.
+
+### 41. Login Page & Settings Linked Methods UX
+
+**File baru:**
+- `src/app/login/login-methods.tsx`
+
+**File edit:**
+- `src/app/login/page.tsx`
+- `src/app/settings/page.tsx`
+- `src/app/settings/settings-client.tsx`
+- `src/components/app-shell.tsx`
+- `src/app/auth/success/page.tsx`
+
+**Perubahan:**
+- Login page sekarang menampilkan semua metode yang tersedia:
+  - GitHub OAuth
+  - Google OAuth
+  - Email magic link
+- Error login diperluas untuk invalid email link dan state linking.
+- Settings page sekarang memiliki panel `Login methods` untuk:
+  - melihat metode yang sudah linked
+  - connect GitHub
+  - connect Google
+  - kirim email link untuk menautkan email auth
+- Menambahkan feedback toast untuk success/failure hasil linking setelah redirect callback.
+- Auth success screen dibuat generic berdasarkan provider, tidak hanya GitHub.
+- Copy di shell diubah agar tidak GitHub-only lagi.
+
+**Dampak:**
+- User bisa menautkan beberapa metode sign-in dari UI tanpa membuat akun terpisah.
+- UX login dan relink jadi jauh lebih jelas.
+
+### 42. Dashboard Overview: Cloudflare Summary Ringkas
+
+**File edit:**
+- `src/app/dashboard-overview.tsx`
+
+**Perubahan:**
+- Menambahkan stat card `Cloudflare hostnames` di overview.
+- Menambahkan card `Cloudflare summary` yang menampilkan:
+  - jumlah tunnel
+  - jumlah published hostname
+  - jumlah Access apps
+  - daftar hostname publik teratas
+- Jika Cloudflare workspace belum dikonfigurasi, dashboard menampilkan CTA ke Settings.
+- Header overview sekarang menampilkan badge `Cloudflare API` jika integration siap.
+
+**Dampak:**
+- Permintaan user untuk ringkasan Cloudflare di Overview sekarang terpenuhi.
+- Dashboard terasa lebih operasional sebagai control plane harian.
+
+### 43. Environment Example & README Repositioning
+
+**File edit:**
+- `.env.example`
+- `README.md`
+
+**Perubahan:**
+- `.env.example` sekarang mendokumentasikan:
+  - GitHub OAuth env
+  - Google OAuth env
+  - Gmail SMTP env
+  - `AUTH_EMAIL_FROM`
+- README dirombak untuk memposisikan OmniGrid sebagai:
+  - Zero Trust server operations platform
+  - control plane untuk SSH, topology, Cloudflare Tunnel, dan linked authentication
+- README juga diperbarui dengan quick start, auth setup, dan positioning produk yang lebih matang.
+
+**Dampak:**
+- Dokumentasi sekarang lebih selaras dengan arah produk yang lebih proper sebagai solusi manajemen server berbasis Zero Trust.
+
+### Validasi Terbaru
+
+Command:
+
+```bash
+npm run build
+```
+
+Hasil:
+
+- Build sukses.
+- TypeScript passed tanpa error.
+- Route auth baru ter-generate:
+  - `ƒ /api/auth/google`
+  - `ƒ /api/auth/google/callback`
+  - `ƒ /api/auth/email/request`
+  - `ƒ /api/auth/email/verify`
+  - `ƒ /api/auth/methods`
+
+Status: stabil.
+
+## Status Akhir Checkpoint
+
+Status: stabil. Build passed. Multi-auth GitHub/Google/email aktif, linked methods UI tersedia, Cloudflare summary muncul di overview, README dan env example sudah diperbarui.

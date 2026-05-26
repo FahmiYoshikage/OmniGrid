@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getGitHub, getGitHubOAuthRedirectUri } from "@/lib/auth/github";
+import { generateCodeVerifier } from "arctic";
+import { getGoogle, getGoogleOAuthRedirectUri } from "@/lib/auth/google";
 import { getSessionUser } from "@/lib/auth/session";
 import { createOAuthRequest } from "@/lib/auth/oauth-requests";
 
@@ -12,16 +13,16 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=login_required", request.url));
   }
 
-  const github = getGitHub();
-  const redirectUri = getGitHubOAuthRedirectUri();
+  const google = getGoogle();
+  const redirectUri = getGoogleOAuthRedirectUri();
+  const codeVerifier = generateCodeVerifier();
   const { state } = await createOAuthRequest({
-    provider: "github",
+    provider: "google",
     secureCookie: redirectUri.startsWith("https://"),
+    codeVerifier,
     linkUserId: sessionUser?.id ?? null,
   });
 
-  const authorizationUrl = github.createAuthorizationURL(state, ["read:user", "user:email"]);
-  authorizationUrl.searchParams.set("redirect_uri", redirectUri);
-
+  const authorizationUrl = google.createAuthorizationURL(state, codeVerifier, ["openid", "profile", "email"]);
   return NextResponse.redirect(authorizationUrl);
 }

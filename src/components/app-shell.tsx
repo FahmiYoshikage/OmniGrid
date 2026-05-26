@@ -278,7 +278,7 @@ function AccessRequired() {
           href="/login"
           className="mt-6 inline-flex rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
         >
-          Sign in with GitHub
+          Sign in to OmniGrid
         </Link>
       </div>
     </div>
@@ -292,7 +292,7 @@ function SessionRefreshScreen() {
         <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-2 border-cyan-200/20 border-t-cyan-200" />
         <h1 className="text-2xl font-bold">Restoring session</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Your GitHub login succeeded. OmniGrid is refreshing the dashboard session.
+          Your login succeeded. OmniGrid is refreshing the dashboard session.
         </p>
       </div>
     </div>

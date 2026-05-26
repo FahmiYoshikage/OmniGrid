@@ -1,164 +1,254 @@
 # OmniGrid
 
-> Single pane of glass for a Tailscale-native homelab. Web SSH, topology graph, reverse-proxy manager, fleet control, uptime, runbooks — one self-hosted container.
+> Zero Trust server operations platform for homelabs, private fleets, and self-hosted infrastructure.
 
-**Status:** in active build. Milestone 1 (data + crypto foundation) ✅ complete.
+OmniGrid gives you a secure control plane to manage servers, SSH access, topology, tunnels, identity, and workspace-scoped integrations from one place. It is built for operators who want a modern web interface without giving up Zero Trust principles.
 
----
+## What OmniGrid is for
 
-## Stack
+OmniGrid is designed for teams and operators who need to:
+
+- manage private servers without exposing inbound ports
+- centralize SSH access and infrastructure visibility
+- publish internal apps through Cloudflare Tunnel
+- keep secrets encrypted and scoped per workspace
+- support multiple login methods on one account
+
+The current platform already supports:
+
+- Tailscale-aware topology and device visibility
+- web SSH terminal with multi-tab sessions
+- credential vault with AES-256-GCM encryption at rest
+- Cloudflare Tunnel monitoring and published hostname management
+- multi-login account linking with GitHub, Google, and email magic links
+- SQLite-backed sessions, audit data, and workspace-scoped settings
+
+## Core capabilities
+
+### Zero Trust access plane
+
+- Tailscale-aware internal access
+- Cloudflare Zero Trust / Tunnel visibility
+- no need to publish OmniGrid through a public reverse proxy
+- workspace-scoped integration secrets
+
+### Server management workflow
+
+- node inventory and SSH profiles
+- browser terminal for multiple hosts
+- topology preview for connected infrastructure
+- recent audit visibility for operator activity
+
+### Identity and account linking
+
+- sign in with GitHub
+- sign in with Google
+- sign in with one-time email magic links delivered through Gmail SMTP
+- link one, two, or all three methods to the same OmniGrid account
+
+## Platform architecture
 
 | Layer | Choice |
 |---|---|
-| Frontend | Next.js 16 (App Router) · React 19 · Tailwind v4 · shadcn/ui |
-| Realtime | socket.io + xterm.js |
-| Topology | @xyflow/react (React Flow) |
-| Backend | Node.js (Next route handlers + custom server later) |
-| SSH | `ssh2` + Tailscale SSH fallback |
-| Storage | SQLite (`better-sqlite3`, WAL mode) |
-| Crypto | AES-256-GCM credential vault |
-| Containerisation | Single Docker image |
+| Frontend | Next.js 16 App Router · React 19 · TailwindCSS v4 · shadcn/ui primitives |
+| Backend | Node.js custom server + Next.js route handlers |
+| Realtime | Socket.IO + xterm.js |
+| SSH | `ssh2` with local agent / key fallback |
+| Storage | SQLite via `better-sqlite3` |
+| Crypto | AES-256-GCM secret vault |
+| Auth | GitHub OAuth · Google OAuth · Gmail-delivered magic links |
+| Tunnel / Edge | Cloudflare Zero Trust API + Cloudflare Tunnel |
 
----
+## Security posture
 
-## Performance principles
-
-OmniGrid is designed to feel instant on a Raspberry Pi-class host:
-
-- **`better-sqlite3` + WAL**: synchronous, in-process, no IPC. PRAGMAs tuned (`cache_size=64MiB`, `mmap_size=256MiB`, `synchronous=NORMAL`).
-- **Singleton DB handle** (HMR-safe via `globalThis`) and **prepared-statement cache** — no re-parsing SQL per request.
-- **Lazy crypto key derivation**, cached after first use.
-- **Zod-validated env at boot** — fail fast, zero runtime guesswork.
-- **Snapshot caches** for slow upstreams (NPM, Tailscale API) so the UI never blocks on the network.
-- **Append-only audit + uptime tables** with covering indexes for time-range queries.
-
----
+- all SSH handshakes happen on the backend
+- credentials never need to enter the frontend bundle
+- secrets are encrypted at rest with `OMNIGRID_MASTER_KEY`
+- sessions are stored server-side in SQLite
+- login methods can be linked to one OmniGrid account without duplicating workspaces
+- Cloudflare and Tailscale secrets are stored per workspace, not as globally exposed UI state
 
 ## Quick start
 
-### 1. Generate a master key
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Generate a platform master key
 
 ```bash
 npm run keygen
 ```
 
-Copy the 64-char hex output.
+Copy the generated 64-character hex string into `OMNIGRID_MASTER_KEY`.
 
-### 2. Configure env
+### 3. Create the local environment file
 
 ```bash
 cp .env.example .env.local
-# paste the master key into OMNIGRID_MASTER_KEY=
 ```
 
-### 3. Initialise the database
+Minimum required values:
+
+```bash
+OMNIGRID_MASTER_KEY=
+OMNIGRID_PUBLIC_URL=http://localhost:3000
+```
+
+### 4. Configure at least one login method
+
+You can enable any combination of the following:
+
+- `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`
+- `GMAIL_SMTP_USER` + `GMAIL_SMTP_APP_PASSWORD`
+
+### 5. Run database migrations
 
 ```bash
 npm run db:migrate
 ```
 
-### 4. (Optional) sanity check
-
-```bash
-npm run db:smoke
-```
-
-Verifies crypto roundtrip + repo writes/reads.
-
-### 5. Dev server
+### 6. Start OmniGrid
 
 ```bash
 npm run dev
 ```
 
-→ http://localhost:3000
+Open:
 
----
-
-## Tailscale data and SSH setup
-
-The topology/dashboard will show **mock data** until both Tailscale API env vars are configured:
-
-```bash
-TAILSCALE_API_KEY=tskey-api-...
-TAILSCALE_TAILNET=your-tailnet.ts.net
+```text
+http://localhost:3000
 ```
 
-Generate the API key from the Tailscale admin console. The key only needs permission to read devices for topology/dashboard views.
+## Authentication setup
 
-Important distinctions:
+### GitHub OAuth
 
-- **Tailscale API login** is used to list real tailnet devices.
-- **The machine running OmniGrid must also be connected to Tailscale** if you want web SSH to reach `100.x.y.z` tailnet IPs.
-- **SSH still uses normal SSH authentication** unless the target's Tailscale SSH policy allows the OmniGrid host/user. If terminal connect fails, verify from the same machine:
+Create a GitHub OAuth app and set the callback URL to:
 
-```bash
-tailscale status
-ssh user@100.x.y.z
+```text
+${OMNIGRID_PUBLIC_URL}/api/auth/github/callback
 ```
 
-If the CLI SSH command fails on the OmniGrid host, the web terminal will fail too. For `tailscale` SSH mode OmniGrid tries the local SSH agent first, then default keys under `~/.ssh/`.
+### Google OAuth
 
----
+Create a Google OAuth client and set the callback URL to:
+
+```text
+${OMNIGRID_PUBLIC_URL}/api/auth/google/callback
+```
+
+### Gmail magic-link login
+
+For passwordless email login:
+
+- create or choose a Gmail account for sending auth emails
+- enable 2-step verification
+- create a Gmail App Password
+- set `GMAIL_SMTP_USER` and `GMAIL_SMTP_APP_PASSWORD`
+- optionally set `AUTH_EMAIL_FROM`
+
+OmniGrid will send one-time login or account-linking links to the user inbox. No password is stored in OmniGrid.
+
+## Workspace-scoped integrations
+
+Integrations are configured in the OmniGrid Settings UI and stored per workspace.
+
+### Tailscale
+
+Use the workspace Tailscale API key and tailnet to:
+
+- populate topology data
+- preview tailnet devices on the dashboard
+- support Tailscale-oriented operations
+
+### Cloudflare Zero Trust
+
+Use workspace Cloudflare credentials to:
+
+- inspect remote-managed tunnels
+- view published hostnames
+- view Cloudflare Access applications
+- inspect visible zones and DNS CNAME records
+- publish new hostnames directly from OmniGrid
+
+Recommended Cloudflare API token scopes:
+
+- `Cloudflare Tunnel:Read/Edit`
+- `Access: Apps and Policies Read`
+- `Zone:Read`
+- `DNS:Read/Edit`
+
+## Dashboard overview
+
+The Overview page gives a compact operations snapshot for:
+
+- Tailscale device health
+- managed nodes stored in OmniGrid
+- recent audit activity
+- Cloudflare tunnel and published hostname visibility
+
+This makes OmniGrid useful as a daily operator cockpit, not just a configuration screen.
+
+## Docker and deployment
+
+This repository includes a production-oriented Dockerfile and `docker-compose.yml`.
+
+Typical deployment model:
+
+- run OmniGrid behind private networking
+- expose it through Cloudflare Tunnel or your preferred Zero Trust ingress
+- keep `OMNIGRID_PUBLIC_URL` aligned with the real public origin
+
+For Cloudflare Tunnel deployments, OmniGrid can now help you inspect and manage published hostname mappings directly from the UI.
+
+## Local development notes
+
+- the custom server entrypoint lives in `server/index.ts`
+- `npm run dev` starts the custom server with Next.js and Socket.IO together
+- `npm run build` validates the production application build
+- `npm run db:smoke` verifies crypto and DB behavior
 
 ## Project layout
 
-```
+```text
 src/
-├── app/                      # Next.js App Router (UI + route handlers)
-├── components/ui/            # shadcn/ui primitives
+├── app/                      # App Router pages and route handlers
+├── components/               # Shared UI and layout components
 └── lib/
-    ├── env.ts                # Zod-validated env loader
-    ├── crypto/               # AES-256-GCM vault
-    ├── db/
-    │   ├── client.ts         # SQLite singleton + PRAGMAs + stmt cache
-    │   ├── schema.sql        # Baseline schema (v1)
-    │   ├── migrate.ts        # Forward-only migration runner
-    │   ├── migrations/       # NNN_name.sql files
-    │   └── repos/            # Typed data accessors
-    ├── ssh/                  # (M3) ssh2 + Tailscale SSH bridge
-    ├── tailscale/            # (M2) Tailscale API client
-    ├── npm/                  # (M4) Nginx Proxy Manager client
-    ├── docker/               # (M4) dockerode wrappers
-    ├── uptime/               # (M5) ping worker
-    ├── runbooks/             # (M6) fan-out executor
-    ├── wol/                  # (M7) Wake-on-LAN
-    └── audit/                # (M8) session metadata logging
-server/                       # (M3) custom server entry
-data/                         # SQLite db + WAL files (gitignored)
-scripts/                      # CLI utilities
+    ├── auth/                 # Session, identity, OAuth, email login
+    ├── cloudflare/           # Cloudflare API client and shared types
+    ├── crypto/               # AES-256-GCM helpers
+    ├── db/                   # SQLite client, schema, migrations, repos
+    ├── ssh/                  # SSH connection and diagnostics logic
+    └── tailscale/            # Tailscale API client
+server/                       # Custom Node.js server entrypoint
+data/                         # SQLite DB files
+scripts/                      # Utility scripts
 ```
 
----
+## Operational principles
 
-## Roadmap
+- fail fast on invalid environment config
+- prefer encrypted secret storage over long-lived plaintext env sprawl
+- keep identity flexible while preserving one workspace/account model
+- expose internal services through Zero Trust ingress instead of direct public ports
+- make operators productive from one interface without losing auditability
 
-| # | Milestone | State |
-|---|---|---|
-| 1 | Crypto vault + SQLite foundation | ✅ done |
-| 2 | Tailscale API client + topology page | ✅ done |
-| 3 | Custom server + socket.io + ssh2 PTY | ✅ done |
-| 4 | xterm.js tabbed terminal UI | ✅ done |
-| 5 | Audit logging middleware | ⏳ |
-| 6 | NPM proxy manager integration | ⏳ |
-| 7 | Docker fleet control (dockerode) | ⏳ |
-| 8 | Uptime monitor + webhook alerting | ⏳ |
-| 9 | Runbooks fan-out execution | ⏳ |
-| 10 | Wake-on-LAN trigger | ⏳ |
-| 11 | Dockerfile + Tailscale sidecar | ⏳ |
+## Current status
 
----
+OmniGrid is already usable as a secure server management surface for:
 
-## Security model
+- homelab fleets
+- private VPS estates
+- internal admin planes
+- Zero Trust-first self-hosted environments
 
-- **Tailscale-first trust**: OmniGrid is intended to bind to the tailnet only. Public exposure is *not* a supported deployment.
-- **Auth via Tailscale `whois`** (planned): incoming requests are identified by the local Tailscale daemon — zero passwords stored.
-- **All SSH handshakes happen on the backend**. Private keys never enter the frontend bundle and live encrypted at rest (AES-256-GCM).
-- **`OMNIGRID_MASTER_KEY` is the root of trust**. Lose it and every encrypted credential is unreadable. Back it up out-of-band.
-- **Audit log** records every SSH session and runbook execution with the verified Tailscale identity.
-
----
+The platform is still evolving, but the foundation is now strong enough to be treated as a proper service rather than a prototype.
 
 ## License
 
-TBD (private homelab project for now).
+Private project for now.

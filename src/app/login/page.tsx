@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
-import { GitHubLoginButton } from "./github-login-button";
+import { getAuthAvailability } from "@/lib/auth/availability";
+import { LoginMethods } from "./login-methods";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function LoginPage({
 
   const params = await searchParams;
   const error = params.error;
+  const availability = getAuthAvailability();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -61,17 +63,20 @@ export default async function LoginPage({
               <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-center text-sm text-red-200">
                 {error === "invalid_state"
                   ? "Login session expired. Please try again."
+                  : error === "invalid_email_link"
+                    ? "Email link is invalid or has expired. Please request a new one."
+                    : error === "login_required"
+                      ? "Please sign in first before linking another login method."
                   : error === "auth_failed"
                     ? "Authentication failed. Please try again."
                     : "An error occurred. Please try again."}
               </div>
             )}
 
-            <GitHubLoginButton />
+            <LoginMethods availability={availability} />
 
             <p className="mt-6 text-center text-xs text-muted-foreground/60">
-              By signing in, you agree to grant OmniGrid access to your GitHub
-              profile information.
+              By signing in, you allow OmniGrid to verify your identity through the login methods you choose.
             </p>
           </div>
         </div>

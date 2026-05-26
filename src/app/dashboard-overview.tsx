@@ -2,21 +2,31 @@ import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getTailnet } from "@/lib/tailscale/client";
+import { getCloudflareOverview } from "@/lib/cloudflare/client";
 import { nodesRepo } from "@/lib/db/repos/nodes";
 import { auditRepo } from "@/lib/db/repos/audit";
+import { integrationSettingsRepo } from "@/lib/db/repos/integration-settings";
 import { requireSessionUser } from "@/lib/auth/access";
 import { DashboardOnboarding } from "./dashboard-onboarding";
-import { Activity, Server, Network, ScrollText, ArrowUpRight, Settings } from "lucide-react";
+import { Activity, ArrowUpRight, Cloud, Globe, Network, ScrollText, Server, Settings } from "lucide-react";
 import Link from "next/link";
 
 export async function DashboardOverview({ showOnboarding = false }: { showOnboarding?: boolean }) {
   const user = await requireSessionUser();
-  const [snapshot] = await Promise.all([getTailnet({ workspaceId: user.workspaceId }).catch(() => null)]);
+  const cloudflareSettings = integrationSettingsRepo.getCloudflarePublic(user.workspaceId);
+  const [snapshot, cloudflareOverview] = await Promise.all([
+    getTailnet({ workspaceId: user.workspaceId }).catch(() => null),
+    cloudflareSettings.accountId && cloudflareSettings.hasApiToken
+      ? getCloudflareOverview(user.workspaceId).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const localNodes = nodesRepo.list(user.workspaceId);
   const audits = auditRepo.recent(5, user.workspaceId);
 
   const online = snapshot?.devices.filter((d) => d.online).length ?? 0;
   const total = snapshot?.devices.length ?? 0;
+  const publishedCount = cloudflareOverview?.tunnels.reduce((count, tunnel) => count + tunnel.hostnames.length, 0) ?? 0;
+  const cloudflareReady = Boolean(cloudflareSettings.accountId && cloudflareSettings.hasApiToken);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -25,21 +35,21 @@ export async function DashboardOverview({ showOnboarding = false }: { showOnboar
         title="Overview"
         description="Health snapshot of your tailnet, fleet, and recent activity."
         actions={
-          snapshot ? (
-            <Badge variant="default">
-              Tailscale API
-            </Badge>
-          ) : null
+          <div className="flex flex-wrap items-center gap-2">
+            {snapshot ? <Badge variant="default">Tailscale API</Badge> : null}
+            {cloudflareReady ? <Badge variant="secondary">Cloudflare API</Badge> : null}
+          </div>
         }
       />
-      <div className="grid grid-cols-1 gap-4 p-8 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 p-8 md:grid-cols-2 xl:grid-cols-5">
         <StatCard icon={<Network className="h-4 w-4" />} label="Tailnet devices" value={snapshot ? `${online} / ${total}` : "—"} hint={snapshot ? "online / total" : "Configure in Settings"} />
         <StatCard icon={<Server className="h-4 w-4" />} label="Managed nodes" value={String(localNodes.length)} hint="entries in OmniGrid DB" />
+        <StatCard icon={<Cloud className="h-4 w-4" />} label="Cloudflare hostnames" value={cloudflareReady ? String(publishedCount) : "—"} hint={cloudflareReady ? "published through tunnels" : "Connect Cloudflare API"} />
         <StatCard icon={<Activity className="h-4 w-4" />} label="Uptime checks" value="—" hint="coming soon" />
         <StatCard icon={<ScrollText className="h-4 w-4" />} label="Audit events" value={String(audits.length)} hint="last 5" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 px-8 pb-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 px-8 pb-8 xl:grid-cols-3">
         <Card className="overflow-hidden border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -106,7 +116,72 @@ export async function DashboardOverview({ showOnboarding = false }: { showOnboar
             )}
           </CardContent>
         </Card>
+
+        <Card className="overflow-hidden border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Globe className="h-4 w-4 text-orange-200" />
+              Cloudflare summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!cloudflareReady ? (
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/5 bg-black/20 p-6 text-center">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-400/10 text-orange-200">
+                  <Cloud className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Cloudflare monitoring not configured</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Save your Cloudflare Account ID and API token in Settings to surface tunnel and domain visibility here.
+                  </p>
+                </div>
+                <Link
+                  href="/settings"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-orange-300/15 px-4 py-2 text-xs font-medium text-orange-200 transition hover:bg-orange-300/25"
+                >
+                  <Settings className="h-3 w-3" />
+                  Configure Cloudflare
+                </Link>
+              </div>
+            ) : cloudflareOverview ? (
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <MiniStat label="Tunnels" value={String(cloudflareOverview.tunnels.length)} />
+                  <MiniStat label="Published" value={String(publishedCount)} />
+                  <MiniStat label="Access apps" value={String(cloudflareOverview.accessApps.length)} />
+                </div>
+                {publishedCount > 0 ? (
+                  <ul className="space-y-2 text-sm">
+                    {cloudflareOverview.tunnels.flatMap((tunnel) => tunnel.hostnames.map((hostname) => ({ tunnel: tunnel.name, ...hostname }))).slice(0, 5).map((item) => (
+                      <li key={`${item.tunnel}-${item.hostname}`} className="rounded-xl border border-white/5 bg-black/20 px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-white">{item.hostname}</span>
+                          <Badge variant="outline">{item.tunnel}</Badge>
+                        </div>
+                        <div className="mt-1 break-all font-mono text-[11px] text-cyan-100/70">{item.service}</div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No published hostnames detected yet.</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Cloudflare overview could not be loaded right now.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
+      <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{label}</div>
+      <div className="mt-2 text-xl font-semibold tabular-nums">{value}</div>
     </div>
   );
 }
