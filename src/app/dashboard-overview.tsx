@@ -51,7 +51,7 @@ export async function DashboardOverview({ showOnboarding = false }: { showOnboar
         <StatCard icon={<ScrollText className="h-4 w-4" />} label="Audit events" value={String(audits.length)} hint="last 5" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 px-8 pb-8 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 px-8 pb-8 xl:grid-cols-2 2xl:grid-cols-4">
         <Card className="overflow-hidden border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -171,6 +171,60 @@ export async function DashboardOverview({ showOnboarding = false }: { showOnboar
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Cloudflare overview could not be loaded right now.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Activity className="h-4 w-4 text-purple-300" />
+              Uptime monitors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {uptimeSummary.total === 0 ? (
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/5 bg-black/20 p-6 text-center">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-purple-400/10 text-purple-200">
+                  <Activity className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">No monitors added</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Create your first monitor to start tracking service health.
+                  </p>
+                </div>
+                <Link
+                  href="/uptime"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-purple-400/15 px-4 py-2 text-xs font-medium text-purple-300 transition hover:bg-purple-400/25"
+                >
+                  <Activity className="h-3 w-3" />
+                  Go to Uptime
+                </Link>
+              </div>
+            ) : (
+              <ul className="space-y-1.5 text-sm">
+                {uptimeRepo.list(user.workspaceId).slice(0, 6).map((monitor) => {
+                  const stats = uptimeRepo.monitorStats(monitor.id);
+                  const isUp = stats.currentStatus === "up";
+                  const isDown = stats.currentStatus === "down";
+                  return (
+                    <li key={monitor.id} className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 px-3 py-2">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${isUp ? "bg-emerald-500 shadow-emerald-500/50" : isDown ? "bg-red-500 animate-pulse shadow-red-500/50" : "bg-zinc-500"}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-white text-xs truncate">{monitor.name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{monitor.target}</div>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0">
+                        <span className={`text-xs font-semibold ${stats.uptime24h >= 99 ? "text-emerald-400" : stats.uptime24h >= 95 ? "text-yellow-400" : "text-red-400"}`}>
+                          {stats.uptime24h.toFixed(1)}%
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">{stats.avgLatency24h != null ? `${stats.avgLatency24h}ms` : "-"}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </CardContent>
         </Card>

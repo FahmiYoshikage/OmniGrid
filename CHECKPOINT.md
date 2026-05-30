@@ -1614,6 +1614,12 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 3. **Fix: Visual Bug HTTP Method**
    - Menambahkan class `bg-slate-900 text-white` pada opsi `<select>` di menu pembuatan monitor agar teks tetap terlihat pada browser/OS dengan *light mode* bawaan.
 
-4. **Feature: Docker Auto-Discovery (Scan Docker)**
-   - Menambahkan endpoint API `/api/uptime/discover` untuk mencari *container* yang terhubung ke network `omnigrid-net` menggunakan `docker ps --filter network=omnigrid-net`.
-   - Menambahkan tombol "Scan Docker" di UI Uptime Monitoring yang akan membuka modal *Docker Auto-Discovery*. Pengguna bisa langsung membuat *monitor* baru (HTTP) dengan target yang di-generate otomatis dari nama container (contoh: `http://nama_container`).
+4. **Feature: Multi-Node Docker Auto-Discovery (Scan Docker)**
+   - Menambahkan endpoint API `/api/uptime/discover` untuk mencari *container* yang terhubung ke network `omnigrid-net`.
+   - Mengintegrasikan fungsi pencarian agar tidak hanya mencari di server lokal, tetapi juga **login via SSH secara otomatis (menggunakan kredensial OmniGrid)** ke seluruh mesin node yang terdaftar di `nodesRepo` dan mengeksekusi `docker ps` di sana. Ini sangat selaras dengan standar OmniGrid di mana semua mesin yang dikontrol menggunakan docker-compose yang terhubung ke jaringan `omnigrid-net`.
+   - Menambahkan tombol "Scan Docker" di UI Uptime Monitoring yang akan membuka modal *Docker Auto-Discovery*. Pengguna bisa melihat container mana yang berjalan di node yang mana, lalu membuat *monitor* baru dengan sekali klik.
+
+5. **Feature: Uptime Preview pada Dashboard Overview**
+   - Menambahkan kartu ringkasan "Uptime Monitors" pada `DashboardOverview` (`src/app/dashboard-overview.tsx`) yang disejajarkan dengan Tailnet Preview dan Cloudflare Summary.
+   - Kartu ini menampilkan 6 monitor terakhir beserta *status indicator* warna-warni (hijau/merah/abu) dan statistik ringkas (*uptime 24h* & *avg latency*).
+
