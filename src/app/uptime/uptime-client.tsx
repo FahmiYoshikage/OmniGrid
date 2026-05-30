@@ -45,6 +45,8 @@ export function UptimeClient() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [checking, setChecking] = useState<string | null>(null);
 
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch("/api/uptime/monitors");
@@ -52,6 +54,7 @@ export function UptimeClient() {
       const data = await res.json();
       setMonitors(data.monitors ?? []);
       setSummary(data.summary ?? { total: 0, up: 0, down: 0, paused: 0, avgUptime24h: 100 });
+      setLastRefreshed(new Date());
     } finally { setLoading(false); }
   }, []);
 
@@ -96,13 +99,30 @@ export function UptimeClient() {
   const uptimeColor = (pct: number) => pct >= 99.9 ? "text-emerald-400" : pct >= 99 ? "text-green-400" : pct >= 95 ? "text-yellow-400" : "text-red-400";
   const statusDot = (s: string) => s === "up" ? "bg-emerald-500 shadow-emerald-500/50" : s === "down" ? "bg-red-500 shadow-red-500/50 animate-pulse" : "bg-zinc-500";
   const kindIcon = (k: string) => k === "http" ? <Globe className="h-4 w-4" /> : k === "tcp" ? <Server className="h-4 w-4" /> : <Signal className="h-4 w-4" />;
+  
+  function formatDuration(ms: number): string {
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ${s % 60}s`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
 
   return (
     <div className="flex min-h-full flex-col">
       <PageHeader title="Uptime Monitoring" description="Real-time health monitoring for your services, APIs, and infrastructure endpoints." actions={
-        <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
-          <Plus className="h-4 w-4" /> New Monitor
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            {lastRefreshed && <span>Last updated: {lastRefreshed.toLocaleTimeString()}</span>}
+            <button onClick={fetchData} className="rounded-lg p-1 hover:bg-white/10 hover:text-white transition">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
+            <Plus className="h-4 w-4" /> New Monitor
+          </button>
+        </div>
       } />
 
       {/* Summary Stats */}
@@ -209,42 +229,120 @@ export function UptimeClient() {
 
                   {/* Active Incident */}
                   {s.activeIncident && (
-                    <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-                      <div className="flex items-center gap-2 text-sm font-medium text-red-300">
-                        <AlertTriangle className="h-4 w-4" /> Active Incident
+                    <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <AlertTriangle className="h-24 w-24" />
                       </div>
-                      <p className="mt-1 text-xs text-red-200/70">Started {new Date(s.activeIncident.started_at).toLocaleString()} — {s.activeIncident.checks_failed} failed checks</p>
-                      {s.activeIncident.cause && <p className="mt-1 font-mono text-xs text-red-200/60">{s.activeIncident.cause}</p>}
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-2 text-sm font-medium text-red-300">
+                          <AlertTriangle className="h-4 w-4 animate-pulse" /> Active Incident
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-4 text-xs">
+                          <div className="flex items-center gap-1.5 text-red-200/80">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>Started {new Date(s.activeIncident.started_at).toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-red-200/80">
+                            <Activity className="h-3.5 w-3.5" />
+                            <span>{s.activeIncident.checks_failed} failed checks</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-red-200/80">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>Downtime: {formatDuration(Date.now() - s.activeIncident.started_at)}</span>
+                          </div>
+                        </div>
+                        {s.activeIncident.cause && (
+                          <div className="mt-3 rounded border border-red-500/20 bg-red-500/20 p-2 font-mono text-xs text-red-200/90">
+                            {s.activeIncident.cause}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
                   {/* Recent Incidents */}
                   {s.recentIncidents.length > 0 && (
-                    <div>
-                      <h4 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Recent Incidents</h4>
-                      <div className="space-y-1.5">
+                    <div className="mb-5">
+                      <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <Clock className="h-3.5 w-3.5" /> Recent Incidents Timeline
+                      </h4>
+                      <div className="relative border-l border-white/10 ml-2 space-y-4 pb-2">
                         {s.recentIncidents.slice(0, 5).map((inc) => (
-                          <div key={inc.id} className="flex items-center gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-xs">
-                            <span className={`h-2 w-2 rounded-full ${inc.resolved_at ? "bg-emerald-500" : "bg-red-500 animate-pulse"}`} />
-                            <span className="flex-1 text-muted-foreground truncate">{inc.cause ?? "Unknown"}</span>
-                            <span className="text-muted-foreground">{inc.checks_failed} fails</span>
-                            <span className="text-muted-foreground">{new Date(inc.started_at).toLocaleDateString()}</span>
-                            {inc.resolved_at ? (
-                              <span className="text-emerald-400 text-[10px]">Resolved</span>
-                            ) : (
-                              <span className="text-red-400 text-[10px]">Ongoing</span>
-                            )}
+                          <div key={inc.id} className="relative pl-6">
+                            <span className={`absolute left-[-5px] top-1 h-2.5 w-2.5 rounded-full ring-4 ring-slate-900 ${inc.resolved_at ? "bg-emerald-500" : "bg-red-500 animate-pulse"}`} />
+                            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 transition hover:bg-white/[0.04]">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-white">{new Date(inc.started_at).toLocaleString()}</span>
+                                {inc.resolved_at ? (
+                                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                                    Resolved in {formatDuration(inc.resolved_at - inc.started_at)}
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400 animate-pulse">
+                                    Ongoing ({formatDuration(Date.now() - inc.started_at)})
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {inc.cause ?? "Unknown error"} <span className="opacity-50">({inc.checks_failed} checks failed)</span>
+                              </p>
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
+                  {/* Configuration & Details */}
+                  <div className="mt-6 border-t border-white/5 pt-5">
+                    <h4 className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Configuration Details</h4>
+                    <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+                      <div className="flex justify-between py-1 border-b border-white/5">
+                        <span className="text-muted-foreground">Type</span>
+                        <span className="font-medium text-white uppercase">{s.monitor.kind}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-white/5">
+                        <span className="text-muted-foreground">Target</span>
+                        <span className="font-medium text-white truncate max-w-[150px]" title={s.monitor.target}>{s.monitor.target}</span>
+                      </div>
+                      {s.monitor.kind === "http" && (
+                        <div className="flex justify-between py-1 border-b border-white/5">
+                          <span className="text-muted-foreground">Method</span>
+                          <span className="font-medium text-white">{s.monitor.method}</span>
+                        </div>
+                      )}
+                      {s.monitor.kind === "http" && s.monitor.expected_status && (
+                        <div className="flex justify-between py-1 border-b border-white/5">
+                          <span className="text-muted-foreground">Expected Status</span>
+                          <span className="font-medium text-white">{s.monitor.expected_status}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between py-1 border-b border-white/5">
+                        <span className="text-muted-foreground">Timeout</span>
+                        <span className="font-medium text-white">{s.monitor.timeout_ms}ms</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-white/5">
+                        <span className="text-muted-foreground">Alerts</span>
+                        <span className="font-medium text-white">{s.monitor.notify ? "Enabled" : "Disabled"}</span>
+                      </div>
+                      {s.certExpiryDays !== null && (
+                        <div className="flex justify-between py-1 border-b border-white/5">
+                          <span className="text-muted-foreground">SSL/TLS Cert</span>
+                          <span className={`font-medium ${s.certExpiryDays < 7 ? "text-red-400" : s.certExpiryDays < 30 ? "text-yellow-400" : "text-emerald-400"}`}>
+                            {s.certExpiryDays} days left
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Last check error */}
                   {s.lastCheck?.error && (
-                    <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
-                      <p className="text-xs font-medium text-amber-300">Last error</p>
-                      <p className="mt-0.5 font-mono text-xs text-amber-200/70">{s.lastCheck.error}</p>
+                    <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-amber-300">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Last check warning
+                      </p>
+                      <p className="mt-1 font-mono text-[10px] text-amber-200/70 overflow-x-auto whitespace-pre-wrap">{s.lastCheck.error}</p>
                     </div>
                   )}
                 </div>
