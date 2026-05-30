@@ -1420,3 +1420,185 @@ Status: stabil.
 ## Status Akhir Checkpoint
 
 Status: stabil. Build passed. Multi-auth GitHub/Google/email aktif, linked methods UI tersedia, Cloudflare summary muncul di overview, README dan env example sudah diperbarui.
+
+## Update Checkpoint 2026-05-30 (Session 9) — Comprehensive Uptime Monitoring System
+
+### 39. Database Migration: Uptime Tables
+
+**File baru:**
+- `src/lib/db/migrations/006_uptime_monitors.sql`
+
+**Perubahan:**
+- Menambahkan tabel `uptime_monitors`:
+  - Configurable monitors per workspace.
+  - Support 3 jenis: `http`, `tcp`, `ping`.
+  - Field: `name`, `kind`, `target`, `interval_sec`, `timeout_ms`, `method`, `expected_status`, `headers_json`, `body`, `enabled`, `notify`.
+  - Index pada `(workspace_id, enabled)`.
+- Menghapus dan membuat ulang tabel `uptime_history` (tabel lama tidak pernah dipakai di production):
+  - Sekarang terikat ke `monitor_id` via foreign key `ON DELETE CASCADE`.
+  - Workspace-scoped.
+  - Field tambahan: `status_code`, `region`.
+  - Index pada `(monitor_id, ts DESC)` dan `(workspace_id, ts DESC)`.
+- Menambahkan tabel `uptime_incidents`:
+  - Tracking transisi state (up→down, down→up).
+  - Field: `started_at`, `resolved_at`, `cause`, `checks_failed`.
+  - Index pada `(monitor_id, started_at DESC)` dan `(workspace_id, started_at DESC)`.
+
+**Alasan:** Fondasi data untuk uptime monitoring yang comprehensive. Monitors terpisah dari history agar bisa CRUD monitor tanpa kehilangan data historis.
+
+### 40. Uptime Repository
+
+**File baru:**
+- `src/lib/db/repos/uptime.ts`
+
+**Perubahan:**
+- `uptimeRepo` dengan fitur lengkap:
+  - **Monitor CRUD:** `listMonitors()`, `listEnabledMonitors()`, `listAllEnabled()`, `getMonitor()`, `createMonitor()`, `updateMonitor()`, `deleteMonitor()`, `toggleMonitor()`.
+  - **History:** `recordCheck()`, `recentChecks()`, `lastCheck()`.
+  - **Aggregasi:** `uptimePercentage()` (24h/7d/30d), `latencyStats()` (avg/P95/min/max), `statusBar()` (90 time-buckets untuk visualisasi).
+  - **Incident lifecycle:** `activeIncident()`, `openIncident()`, `resolveIncident()`, `incrementIncidentFailures()`, `recentIncidents()`, `workspaceIncidents()`.
+  - **Stats builder:** `getMonitorStats()` (full stats per monitor), `getWorkspaceStats()` (semua monitor), `workspaceSummary()` (angka ringkasan untuk dashboard).
+  - **Cleanup:** `pruneHistory()` (hapus data >90 hari).
+
+**Alasan:** Repository tunggal yang mengcover seluruh kebutuhan uptime dari CRUD sampai agregasi dashboard.
+
+### 41. Background Uptime Checker Engine
+
+**File baru:**
+- `src/lib/uptime/checker.ts`
+
+**Perubahan:**
+- **HTTP checker:** `fetch()` dengan custom headers, method, body, expected status code. Timeout via `AbortController`.
+- **TCP checker:** `net.createConnection()` dengan timeout. Mengukur latency sampai TCP handshake selesai.
+- **Ping checker:** `ping -c 1` via child process. Mengekstrak RTT dari output ping.
+- **TLS certificate expiry:** Untuk target HTTPS, mengekstrak `notAfter` dari sertifikat via `openssl s_client`.
+- **Incident management:** Otomatis membuka incident saat check pertama gagal, increment failure count pada kegagalan berikutnya, resolve saat check berhasil kembali. Log ke console saat incident dibuka/resolved.
+- **Scheduler:** Tick setiap 5 detik, memeriksa monitor mana yang sudah waktunya di-check. Staggered initial delay untuk menghindari thundering herd. Concurrency limit 10 checks simultan.
+- **Lifecycle:** `startUptimeChecker()` dan `stopUptimeChecker()` untuk integrasi dengan server lifecycle.
+- **Manual check:** `runManualCheck()` untuk tombol "Check Now" di UI.
+- **Auto cleanup:** Prune history >90 hari setiap 24 jam.
+
+**Alasan:** Background engine yang berjalan di proses custom server yang sama, tidak perlu cron atau queue eksternal. Design decision: single-process scheduler karena OmniGrid sudah punya custom server.
+
+### 42. API Routes Uptime
+
+**File baru:**
+- `src/app/api/uptime/monitors/route.ts`
+- `src/app/api/uptime/monitors/[id]/route.ts`
+
+**Perubahan:**
+- `GET /api/uptime/monitors` — List semua monitor beserta stats lengkap dan summary workspace.
+- `POST /api/uptime/monitors` — Buat monitor baru. Validasi Zod untuk semua field. Validasi format target berdasarkan kind (URL untuk http, host:port untuk tcp).
+- `GET /api/uptime/monitors/[id]` — Detail monitor dengan stats lengkap dan 200 checks terakhir.
+- `PUT /api/uptime/monitors/[id]` — Update monitor.
+- `DELETE /api/uptime/monitors/[id]` — Hapus monitor beserta semua history dan incident (cascade).
+- `PATCH /api/uptime/monitors/[id]` — Toggle enable/disable atau trigger manual check (`action: "check_now"`).
+- Semua route protected dan scoped ke workspace via `requireApiSession()`.
+
+### 43. Uptime Dashboard UI
+
+**File baru:**
+- `src/app/uptime/page.tsx`
+- `src/app/uptime/uptime-client.tsx`
+
+**Perubahan:**
+- Server page dengan `requireSessionUser()`.
+- Client component `UptimeClient` dengan fitur:
+  - **Summary stats bar:** Total monitors, operational, down, paused, avg uptime 24h.
+  - **Monitor list:** Setiap monitor menampilkan status dot (animated pulse untuk down), kind icon, name, target, mini status bar (45 slots), uptime %, avg latency.
+  - **Expandable detail per monitor:**
+    - Action buttons: Check Now, Pause/Resume, Edit, Delete.
+    - Stats grid: Uptime 24h/7d/30d, checks count, avg/P95/min/max latency, interval.
+    - Full 24h status bar (90 slots) dengan hover tooltip.
+    - Active incident alert card.
+    - Recent incidents timeline dengan status badge.
+    - Last error display.
+  - **Create/Edit modal:**
+    - Name, type selector (HTTP/TCP/Ping), target input with hint.
+    - HTTP-specific: method selector, expected status.
+    - Interval dan timeout config.
+    - Enable/notify toggles.
+  - **Auto-refresh:** Polling setiap 30 detik.
+  - **Empty state:** Informative CTA saat belum ada monitor.
+
+### 44. Server Lifecycle Integration
+
+**File edit:**
+- `server/index.ts`
+
+**Perubahan:**
+- Import `startUptimeChecker` dan `stopUptimeChecker`.
+- `startUptimeChecker()` dipanggil setelah `httpServer.listen()` berhasil.
+- `stopUptimeChecker()` dipanggil pada `shutdown()` sebelum `io.close()`.
+
+**Alasan:** Uptime checker berjalan sebagai background loop dalam proses yang sama dengan server. Start setelah server ready, stop saat shutdown untuk clean exit.
+
+### 45. Dashboard Overview Integration
+
+**File edit:**
+- `src/app/dashboard-overview.tsx`
+
+**Perubahan:**
+- Import `uptimeRepo`.
+- Stat card "Uptime checks" yang sebelumnya "coming soon" sekarang menampilkan data real: `up / total` monitors dan `avg uptime 24h %`.
+- Jika belum ada monitor, menampilkan "—" dengan hint "Add monitors".
+
+### 46. Sidebar Navigation Update
+
+**File edit:**
+- `src/components/app-shell.tsx`
+
+**Perubahan:**
+- Menghapus `soon: true` dari nav item Uptime. Route `/uptime` sekarang aktif.
+
+### Validasi Terbaru
+
+Command:
+
+```bash
+npm run build
+```
+
+Hasil: sukses. TypeScript passed tanpa error. Routes generated:
+
+```
+ƒ /api/uptime/monitors
+ƒ /api/uptime/monitors/[id]
+ƒ /uptime
+```
+
+Status: stabil.
+
+## Pending / Next Steps yang Disarankan
+
+### High Priority
+- Custom delete confirmation dialog (ganti browser `confirm()` dengan modal premium).
+- Uptime webhook notifications (kirim alert ke webhook saat incident open/resolve).
+
+### Medium Priority
+- Audit Log UI dengan filter workspace.
+- Uptime public status page (shareable URL untuk monitoring publik).
+- Uptime response time chart (line chart latency over time).
+
+### Future Milestones
+- Runbooks.
+- Wake-on-LAN.
+- Fleet control.
+- Multi-workspace switcher UI.
+- Team/invite member ke workspace.
+- Multi-region uptime probing.
+
+## Known Considerations (Updated)
+- Terminal reattach tidak menyimpan seluruh history scrollback, hanya output buffer terakhir 200KB.
+- Credential secret/passphrase tidak dikembalikan API. Edit mode: kosongkan field untuk keep existing.
+- `Button` project ini tidak mendukung `asChild`.
+- Workspace baru dibuat secara otomatis saat pertama kali user login (default workspace).
+- Uptime checker berjalan di proses custom server yang sama. Jika server restart, scheduler dimulai ulang otomatis dengan staggered delay.
+- Uptime history di-prune otomatis setiap 24 jam (data >90 hari dihapus).
+- Ping checker membutuhkan `ping` binary tersedia di host OS. Dalam Docker Alpine perlu `iputils`.
+- TLS certificate expiry checker membutuhkan `openssl` binary di host OS.
+- Uptime incidents dibuka otomatis pada kegagalan pertama dan di-resolve otomatis saat check berhasil kembali.
+
+## Status Akhir Checkpoint
+
+Status: stabil. Build passed. Uptime monitoring system aktif dengan background checker, incident tracking, dan comprehensive dashboard UI.
