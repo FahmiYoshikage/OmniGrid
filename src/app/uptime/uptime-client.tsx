@@ -44,8 +44,35 @@ export function UptimeClient() {
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [checking, setChecking] = useState<string | null>(null);
-
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  // Discover Docker state
+  const [showDiscover, setShowDiscover] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoveredContainers, setDiscoveredContainers] = useState<any[]>([]);
+
+  const fetchDiscover = async () => {
+    setDiscovering(true);
+    setShowDiscover(true);
+    try {
+      const res = await fetch("/api/uptime/discover");
+      if (!res.ok) throw new Error("Failed to scan docker");
+      const data = await res.json();
+      setDiscoveredContainers(data.containers || []);
+    } catch (err) {
+      console.error(err);
+      setDiscoveredContainers([]);
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleCreateFromDocker = (c: any) => {
+    setShowDiscover(false);
+    setForm({ ...EMPTY_FORM, name: c.name, kind: "http", target: `http://${c.name}` });
+    setEditId(null);
+    setShowForm(true);
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -119,6 +146,9 @@ export function UptimeClient() {
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
           </div>
+          <button onClick={fetchDiscover} className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15">
+            <RefreshCw className={`h-4 w-4 ${discovering ? "animate-spin" : ""}`} /> Scan Docker
+          </button>
           <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
             <Plus className="h-4 w-4" /> New Monitor
           </button>
@@ -384,7 +414,7 @@ export function UptimeClient() {
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Method">
                     <select value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })} className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none">
-                      {["GET", "POST", "PUT", "HEAD", "OPTIONS"].map((m) => <option key={m} value={m}>{m}</option>)}
+                      {["GET", "POST", "PUT", "HEAD", "OPTIONS"].map((m) => <option key={m} value={m} className="bg-slate-900 text-white">{m}</option>)}
                     </select>
                   </FormField>
                   <FormField label="Expected status">
@@ -417,6 +447,62 @@ export function UptimeClient() {
               <button onClick={handleSave} disabled={saving || !form.name || !form.target} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:opacity-50">
                 {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {editId ? "Update" : "Create"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discover Docker Modal */}
+      {showDiscover && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowDiscover(false); }}>
+          <div className="w-full max-w-2xl rounded-3xl border border-white/15 bg-slate-900 p-6 shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="mb-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-400/10 text-cyan-200">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Docker Auto-Discovery</h2>
+                  <p className="text-xs text-muted-foreground">Containers in the 'omnigrid-net' network</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDiscover(false)} className="grid h-8 w-8 place-items-center rounded-xl text-muted-foreground hover:bg-white/10 hover:text-white transition"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto min-h-[200px] border border-white/5 rounded-xl bg-black/20 p-2">
+              {discovering ? (
+                <div className="flex h-full flex-col items-center justify-center text-cyan-200 gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="text-xs font-medium">Scanning Docker engine...</span>
+                </div>
+              ) : discoveredContainers.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-3 py-10">
+                  <Server className="h-8 w-8 opacity-50" />
+                  <p className="text-sm font-medium">No containers found in 'omnigrid-net' network.</p>
+                  <p className="text-xs max-w-xs text-center opacity-70">Ensure Docker is running and your containers are attached to the correct network.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {discoveredContainers.map((c, idx) => (
+                    <div key={idx} className="flex items-center justify-between rounded-lg bg-white/5 p-3 hover:bg-white/10 transition">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white text-sm">{c.name}</span>
+                          <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">{c.state}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground truncate max-w-sm">{c.image}</div>
+                      </div>
+                      <button onClick={() => handleCreateFromDocker(c)} className="rounded-lg bg-cyan-300/15 px-3 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-300/25">
+                        Add Monitor
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button onClick={() => setShowDiscover(false)} className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10">Close</button>
             </div>
           </div>
         </div>

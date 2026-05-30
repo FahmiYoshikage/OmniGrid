@@ -140,7 +140,7 @@ async function checkPing(monitor: UptimeMonitorRow): Promise<CheckResult> {
 
   try {
     const { stdout } = await execAsync(
-      `ping -c 1 -W ${timeoutSec} ${target}`,
+      `ping -c 1 ${target}`,
       { timeout: monitor.timeout_ms + 2000 },
     );
     const latencyMs = Math.round(performance.now() - start);
