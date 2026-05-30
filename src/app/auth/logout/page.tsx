@@ -42,7 +42,7 @@ function LogoutContent() {
             <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-white/10 to-white/5 shadow-lg shadow-violet-500/10 ring-1 ring-white/10 animate-bounce" style={{ animationDuration: "2s" }}>
               <Image
                 src="/logo.svg"
-                alt="OmniGrid"
+                alt="OmniGrid Network Architecture"
                 width={56}
                 height={56}
                 className="drop-shadow-lg"

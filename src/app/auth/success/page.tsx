@@ -70,7 +70,7 @@ export default function AuthSuccessPage() {
               <div className="absolute inset-0 rounded-3xl border-2 border-transparent border-t-cyan-400/60 animate-spin" style={{ animationDuration: "2s" }} />
               <Image
                 src="/logo.svg"
-                alt="OmniGrid"
+                alt="OmniGrid Network Architecture"
                 width={56}
                 height={56}
                 className="drop-shadow-lg"
@@ -79,8 +79,8 @@ export default function AuthSuccessPage() {
             </div>
             
             <div className="relative text-center">
-              <h1 className="text-2xl font-bold tracking-tight text-white">
-                Welcome to OmniGrid
+              <h1 className="text-balance text-xl font-bold tracking-tight text-white sm:text-2xl">
+                Welcome to OmniGrid Network Architecture
               </h1>
               <p className="mt-1 text-sm text-emerald-100/60">
                 Setting up your session...

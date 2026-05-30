@@ -191,7 +191,7 @@ export function TunnelsClient({ settings, publicOrigin, publicHost, zoneHint, re
           <CardHeader className="flex-row items-start justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2 text-base">
-                <PlusCircle className="h-4 w-4 text-cyan-200" /> Publish hostname from OmniGrid
+                <PlusCircle className="h-4 w-4 text-cyan-200" /> Publish hostname from OmniGrid Network Architecture
               </CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 Add or update a public hostname on a remote-managed tunnel and sync the matching CNAME when possible.

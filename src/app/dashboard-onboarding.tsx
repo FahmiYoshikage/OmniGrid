@@ -64,7 +64,7 @@ export function DashboardOnboarding({ open }: { open: boolean }) {
           <div className="relative flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200/70">Quick orientation</p>
-              <h2 className="mt-2 text-2xl font-bold text-white">Kenali workspace OmniGrid</h2>
+              <h2 className="mt-2 text-2xl font-bold text-white">Kenali workspace OmniGrid Network Architecture</h2>
               <p className="mt-2 text-sm leading-6 text-slate-400">Overview singkat supaya kamu tahu tab utama dipakai untuk apa. Bisa di-skip kapan saja.</p>
             </div>
             <button type="button" onClick={close} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/10 hover:text-white">
@@ -116,7 +116,7 @@ export function DashboardOnboarding({ open }: { open: boolean }) {
                   Back
                 </button>
                 <button type="button" onClick={() => (isLast ? close() : setStep(step + 1))} className="rounded-2xl bg-cyan-300 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
-                  {isLast ? "Start using OmniGrid" : "Next"}
+                  {isLast ? "Start using OmniGrid Network Architecture" : "Next"}
                 </button>
               </div>
             </div>

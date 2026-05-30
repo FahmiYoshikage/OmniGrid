@@ -18,9 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OmniGrid — Homelab Command Center",
+  title: "OmniGrid Network Architecture — Zero Trust Server Operations",
   description:
-    "Single pane of glass for managing your homelab infrastructure. SSH, topology, proxy, and more.",
+    "Zero Trust control plane for managing your network architecture, SSH operations, topology, Cloudflare exposure, and infrastructure workflows.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

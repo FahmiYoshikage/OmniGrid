@@ -35,11 +35,11 @@ export function LandingPage() {
         <nav className="flex items-center justify-between rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/10">
-              <Image src="/logo.svg" alt="OmniGrid" width={30} height={30} priority />
+              <Image src="/logo.svg" alt="OmniGrid Network Architecture" width={30} height={30} priority />
             </div>
             <div>
-              <div className="font-bold tracking-tight">OmniGrid</div>
-              <div className="text-xs text-cyan-100/60">homelab command center</div>
+              <div className="text-sm font-bold tracking-tight sm:text-base">OmniGrid Network Architecture</div>
+              <div className="text-xs text-cyan-100/60">Zero Trust server operations</div>
             </div>
           </div>
           <Link
@@ -60,14 +60,14 @@ export function LandingPage() {
               Operate every node from one encrypted command center.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              OmniGrid brings SSH tabs, topology, credentials, and operational context into a polished dashboard built for homelabs, VPS fleets, and private networks.
+              OmniGrid Network Architecture brings SSH tabs, topology, credentials, and operational context into a polished dashboard built for homelabs, VPS fleets, and private networks.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link
                 href="/login"
                 className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-slate-950 shadow-2xl shadow-white/10 transition hover:-translate-y-0.5"
               >
-                Continue with GitHub <ArrowRight className="h-4 w-4" />
+                Sign in to OmniGrid Network Architecture <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/login"
@@ -118,6 +118,16 @@ export function LandingPage() {
               </div>
             );
           })}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3 pb-4 text-xs text-slate-500">
+          <Link href="/privacy-policy" className="transition hover:text-white">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link href="/terms" className="transition hover:text-white">
+            Terms of Service
+          </Link>
         </div>
       </section>
     </main>

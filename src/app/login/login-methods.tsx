@@ -83,7 +83,7 @@ export function LoginMethods({ availability }: { availability: AuthAvailability 
             {sendingEmail ? "Sending secure link..." : "Send sign-in link"}
           </Button>
           <p className="text-xs leading-5 text-muted-foreground">
-            We&apos;ll send a one-time secure link to your Gmail inbox. No password is stored in OmniGrid.
+            We&apos;ll send a one-time secure link to your Gmail inbox. No password is stored in OmniGrid Network Architecture.
           </p>
           {emailSent ? <p className="text-xs text-emerald-200/80">Magic link sent to {emailSent}.</p> : null}
         </form>
@@ -91,7 +91,7 @@ export function LoginMethods({ availability }: { availability: AuthAvailability 
 
       {!availability.github && !availability.google && !availability.email ? (
         <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          No login method is configured yet. Add GitHub, Google, or Gmail SMTP settings in the platform environment.
+          No login method is configured yet. Add GitHub, Google, or Gmail SMTP settings in the OmniGrid Network Architecture platform environment.
         </div>
       ) : null}
     </div>

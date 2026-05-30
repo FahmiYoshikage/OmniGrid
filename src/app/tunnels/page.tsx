@@ -29,7 +29,7 @@ export default async function TunnelsPage() {
     <div className="flex min-h-full flex-col">
       <PageHeader
         title="Cloudflare Tunnel"
-        description="Publish OmniGrid through Cloudflare Zero Trust without exposing inbound ports."
+        description="Publish OmniGrid Network Architecture through Cloudflare Zero Trust without exposing inbound ports."
         actions={
           <Link href="/settings">
             <Button>

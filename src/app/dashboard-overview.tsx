@@ -6,6 +6,7 @@ import { getCloudflareOverview } from "@/lib/cloudflare/client";
 import { nodesRepo } from "@/lib/db/repos/nodes";
 import { auditRepo } from "@/lib/db/repos/audit";
 import { integrationSettingsRepo } from "@/lib/db/repos/integration-settings";
+import { uptimeRepo } from "@/lib/db/repos/uptime";
 import { requireSessionUser } from "@/lib/auth/access";
 import { DashboardOnboarding } from "./dashboard-onboarding";
 import { Activity, ArrowUpRight, Cloud, Globe, Network, ScrollText, Server, Settings } from "lucide-react";
@@ -27,6 +28,7 @@ export async function DashboardOverview({ showOnboarding = false }: { showOnboar
   const total = snapshot?.devices.length ?? 0;
   const publishedCount = cloudflareOverview?.tunnels.reduce((count, tunnel) => count + tunnel.hostnames.length, 0) ?? 0;
   const cloudflareReady = Boolean(cloudflareSettings.accountId && cloudflareSettings.hasApiToken);
+  const uptimeSummary = uptimeRepo.workspaceSummary(user.workspaceId);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -43,9 +45,9 @@ export async function DashboardOverview({ showOnboarding = false }: { showOnboar
       />
       <div className="grid grid-cols-1 gap-4 p-8 md:grid-cols-2 xl:grid-cols-5">
         <StatCard icon={<Network className="h-4 w-4" />} label="Tailnet devices" value={snapshot ? `${online} / ${total}` : "—"} hint={snapshot ? "online / total" : "Configure in Settings"} />
-        <StatCard icon={<Server className="h-4 w-4" />} label="Managed nodes" value={String(localNodes.length)} hint="entries in OmniGrid DB" />
+        <StatCard icon={<Server className="h-4 w-4" />} label="Managed nodes" value={String(localNodes.length)} hint="entries in OmniGrid Network Architecture DB" />
         <StatCard icon={<Cloud className="h-4 w-4" />} label="Cloudflare hostnames" value={cloudflareReady ? String(publishedCount) : "—"} hint={cloudflareReady ? "published through tunnels" : "Connect Cloudflare API"} />
-        <StatCard icon={<Activity className="h-4 w-4" />} label="Uptime checks" value="—" hint="coming soon" />
+        <StatCard icon={<Activity className="h-4 w-4" />} label="Uptime monitors" value={uptimeSummary.total > 0 ? `${uptimeSummary.up} / ${uptimeSummary.total}` : "—"} hint={uptimeSummary.total > 0 ? `${uptimeSummary.avgUptime24h.toFixed(1)}% avg 24h` : "Add monitors"} />
         <StatCard icon={<ScrollText className="h-4 w-4" />} label="Audit events" value={String(audits.length)} hint="last 5" />
       </div>
 

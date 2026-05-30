@@ -14,6 +14,7 @@ import next from "next";
 import { Server as IOServer } from "socket.io";
 import { migrate } from "@/lib/db/migrate";
 import { attachSshNamespace } from "@/lib/ssh/socket";
+import { startUptimeChecker, stopUptimeChecker } from "@/lib/uptime/checker";
 import { getEnv } from "@/lib/env";
 
 async function main() {
@@ -48,10 +49,12 @@ async function main() {
       `[omnigrid] ready  http://${env.OMNIGRID_HOST}:${env.OMNIGRID_PORT}  ` +
         `(${dev ? "dev" : "prod"})`,
     );
+    startUptimeChecker();
   });
 
   const shutdown = (sig: string) => {
     console.log(`[omnigrid] ${sig} received, shutting down`);
+    stopUptimeChecker();
     io.close();
     httpServer.close(() => process.exit(0));
     setTimeout(() => process.exit(1), 5000).unref();

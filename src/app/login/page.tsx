@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { getAuthAvailability } from "@/lib/auth/availability";
@@ -35,7 +36,7 @@ export default async function LoginPage({
             <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-white/10 to-white/5 shadow-lg shadow-cyan-500/10 ring-1 ring-white/10">
               <Image
                 src="/logo.svg"
-                alt="OmniGrid"
+                alt="OmniGrid Network Architecture"
                 width={56}
                 height={56}
                 className="drop-shadow-lg"
@@ -43,11 +44,11 @@ export default async function LoginPage({
               />
             </div>
             <div className="relative text-center">
-              <h1 className="text-2xl font-bold tracking-tight text-white">
-                OmniGrid
+              <h1 className="text-balance text-2xl font-bold tracking-tight text-white">
+                OmniGrid Network Architecture
               </h1>
               <p className="mt-1 text-sm text-cyan-100/60">
-                Homelab Command Center
+                Zero Trust server operations
               </p>
             </div>
           </div>
@@ -82,9 +83,18 @@ export default async function LoginPage({
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-muted-foreground/40">
-          OmniGrid — Secure control plane for your homelab
-        </p>
+        <div className="mt-6 space-y-2 text-center text-xs text-muted-foreground/40">
+          <p>OmniGrid Network Architecture — Secure control plane for your network and servers</p>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/privacy-policy" className="transition hover:text-white">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="transition hover:text-white">
+              Terms of Service
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

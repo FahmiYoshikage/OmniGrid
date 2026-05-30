@@ -42,7 +42,7 @@ const NAV: NavItem[] = [
   { href: "/credentials", label: "Credentials", icon: KeyRound },
   { href: "/terminal", label: "Terminal", icon: Terminal },
   { href: "/tunnels", label: "Cloudflare Tunnel", icon: Globe },
-  { href: "/uptime", label: "Uptime", icon: Activity, soon: true },
+  { href: "/uptime", label: "Uptime", icon: Activity },
   { href: "/runbooks", label: "Runbooks", icon: PlayCircle, soon: true },
   { href: "/audit", label: "Audit Log", icon: ScrollText, soon: true },
   { href: "/wol", label: "Wake-on-LAN", icon: Power, soon: true },
@@ -62,6 +62,12 @@ export function AppShell({ children, user }: AppShellProps) {
   const [currentUser, setCurrentUser] = useState<AppShellUser | null>(user ?? null);
   const [checkingSession, setCheckingSession] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(Boolean(user));
+  const publicRoute =
+    pathname === "/login" ||
+    pathname?.startsWith("/auth/") ||
+    pathname === "/" ||
+    pathname === "/privacy-policy" ||
+    pathname === "/terms";
 
   useEffect(() => {
     setCurrentUser(user ?? null);
@@ -69,7 +75,6 @@ export function AppShell({ children, user }: AppShellProps) {
   }, [user]);
 
   useEffect(() => {
-    const publicRoute = pathname === "/login" || pathname?.startsWith("/auth/") || pathname === "/";
     if (publicRoute || currentUser || sessionChecked) return;
 
     let cancelled = false;
@@ -99,9 +104,9 @@ export function AppShell({ children, user }: AppShellProps) {
     return () => {
       cancelled = true;
     };
-  }, [currentUser, pathname, sessionChecked]);
+  }, [currentUser, publicRoute, sessionChecked]);
 
-  if (pathname === "/login" || pathname?.startsWith("/auth/") || (pathname === "/" && !currentUser)) {
+  if (publicRoute && (pathname !== "/" || !currentUser)) {
     return <>{children}</>;
   }
 
@@ -121,15 +126,15 @@ export function AppShell({ children, user }: AppShellProps) {
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-white/10 to-white/5 shadow-lg shadow-cyan-500/10 ring-1 ring-white/10">
             <Image
               src="/logo.svg"
-              alt="OmniGrid"
+              alt="OmniGrid Network Architecture"
               width={28}
               height={28}
               className="drop-shadow-md"
             />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold tracking-tight">OmniGrid</span>
-            <span className="text-[11px] text-cyan-100/60">homelab command center</span>
+            <span className="text-sm font-bold tracking-tight">OmniGrid Network Architecture</span>
+            <span className="text-[11px] text-cyan-100/60">Zero Trust server operations</span>
           </div>
         </div>
         <nav className="relative flex flex-col gap-1 p-3">
@@ -272,13 +277,13 @@ function AccessRequired() {
         </div>
         <h1 className="text-2xl font-bold">Login required</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          OmniGrid dashboard, SSH, nodes, credentials, and topology require an authenticated session.
+          OmniGrid Network Architecture dashboard, SSH, nodes, credentials, and topology require an authenticated session.
         </p>
         <Link
           href="/login"
           className="mt-6 inline-flex rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
         >
-          Sign in to OmniGrid
+          Sign in to OmniGrid Network Architecture
         </Link>
       </div>
     </div>
@@ -292,7 +297,7 @@ function SessionRefreshScreen() {
         <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-2 border-cyan-200/20 border-t-cyan-200" />
         <h1 className="text-2xl font-bold">Restoring session</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Your login succeeded. OmniGrid is refreshing the dashboard session.
+          Your login succeeded. OmniGrid Network Architecture is refreshing the dashboard session.
         </p>
       </div>
     </div>

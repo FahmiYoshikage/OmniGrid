@@ -1,12 +1,12 @@
-# OmniGrid
+# OmniGrid Network Architecture
 
 > Zero Trust server operations platform for homelabs, private fleets, and self-hosted infrastructure.
 
-OmniGrid gives you a secure control plane to manage servers, SSH access, topology, tunnels, identity, and workspace-scoped integrations from one place. It is built for operators who want a modern web interface without giving up Zero Trust principles.
+OmniGrid Network Architecture gives you a secure control plane to manage servers, SSH access, topology, tunnels, identity, and workspace-scoped integrations from one place. It is built for operators who want a modern web interface without giving up Zero Trust principles.
 
-## What OmniGrid is for
+## What OmniGrid Network Architecture is for
 
-OmniGrid is designed for teams and operators who need to:
+OmniGrid Network Architecture is designed for teams and operators who need to:
 
 - manage private servers without exposing inbound ports
 - centralize SSH access and infrastructure visibility
@@ -29,7 +29,7 @@ The current platform already supports:
 
 - Tailscale-aware internal access
 - Cloudflare Zero Trust / Tunnel visibility
-- no need to publish OmniGrid through a public reverse proxy
+- no need to publish OmniGrid Network Architecture through a public reverse proxy
 - workspace-scoped integration secrets
 
 ### Server management workflow
@@ -44,7 +44,7 @@ The current platform already supports:
 - sign in with GitHub
 - sign in with Google
 - sign in with one-time email magic links delivered through Gmail SMTP
-- link one, two, or all three methods to the same OmniGrid account
+- link one, two, or all three methods to the same OmniGrid Network Architecture account
 
 ## Platform architecture
 
@@ -65,7 +65,7 @@ The current platform already supports:
 - credentials never need to enter the frontend bundle
 - secrets are encrypted at rest with `OMNIGRID_MASTER_KEY`
 - sessions are stored server-side in SQLite
-- login methods can be linked to one OmniGrid account without duplicating workspaces
+- login methods can be linked to one OmniGrid Network Architecture account without duplicating workspaces
 - Cloudflare and Tailscale secrets are stored per workspace, not as globally exposed UI state
 
 ## Quick start
@@ -111,7 +111,7 @@ You can enable any combination of the following:
 npm run db:migrate
 ```
 
-### 6. Start OmniGrid
+### 6. Start OmniGrid Network Architecture
 
 ```bash
 npm run dev
@@ -151,11 +151,11 @@ For passwordless email login:
 - set `GMAIL_SMTP_USER` and `GMAIL_SMTP_APP_PASSWORD`
 - optionally set `AUTH_EMAIL_FROM`
 
-OmniGrid will send one-time login or account-linking links to the user inbox. No password is stored in OmniGrid.
+OmniGrid Network Architecture will send one-time login or account-linking links to the user inbox. No password is stored in OmniGrid Network Architecture.
 
 ## Workspace-scoped integrations
 
-Integrations are configured in the OmniGrid Settings UI and stored per workspace.
+Integrations are configured in the OmniGrid Network Architecture Settings UI and stored per workspace.
 
 ### Tailscale
 
@@ -173,7 +173,7 @@ Use workspace Cloudflare credentials to:
 - view published hostnames
 - view Cloudflare Access applications
 - inspect visible zones and DNS CNAME records
-- publish new hostnames directly from OmniGrid
+- publish new hostnames directly from OmniGrid Network Architecture
 
 Recommended Cloudflare API token scopes:
 
@@ -187,11 +187,11 @@ Recommended Cloudflare API token scopes:
 The Overview page gives a compact operations snapshot for:
 
 - Tailscale device health
-- managed nodes stored in OmniGrid
+- managed nodes stored in OmniGrid Network Architecture
 - recent audit activity
 - Cloudflare tunnel and published hostname visibility
 
-This makes OmniGrid useful as a daily operator cockpit, not just a configuration screen.
+This makes OmniGrid Network Architecture useful as a daily operator cockpit, not just a configuration screen.
 
 ## Docker and deployment
 
@@ -199,11 +199,11 @@ This repository includes a production-oriented Dockerfile and `docker-compose.ym
 
 Typical deployment model:
 
-- run OmniGrid behind private networking
+- run OmniGrid Network Architecture behind private networking
 - expose it through Cloudflare Tunnel or your preferred Zero Trust ingress
 - keep `OMNIGRID_PUBLIC_URL` aligned with the real public origin
 
-For Cloudflare Tunnel deployments, OmniGrid can now help you inspect and manage published hostname mappings directly from the UI.
+For Cloudflare Tunnel deployments, OmniGrid Network Architecture can now help you inspect and manage published hostname mappings directly from the UI.
 
 ## Local development notes
 
@@ -240,7 +240,7 @@ scripts/                      # Utility scripts
 
 ## Current status
 
-OmniGrid is already usable as a secure server management surface for:
+OmniGrid Network Architecture is already usable as a secure server management surface for:
 
 - homelab fleets
 - private VPS estates
