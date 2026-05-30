@@ -64,17 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_node ON audit_log(node_id, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_session ON audit_log(session_id);
 
--- Uptime samples. Append-only; old rows pruned by a background job later.
-CREATE TABLE IF NOT EXISTS uptime_history (
-  id        INTEGER PRIMARY KEY AUTOINCREMENT,
-  target    TEXT NOT NULL,                  -- node id OR public domain
-  kind      TEXT NOT NULL CHECK (kind IN ('node','domain')),
-  ts        INTEGER NOT NULL,
-  ok        INTEGER NOT NULL,               -- 0/1
-  latency_ms INTEGER,
-  error     TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_uptime_target_ts ON uptime_history(target, ts DESC);
+
 
 -- Cached snapshot of NPM proxy hosts so the dashboard renders fast even when
 -- NPM is slow. Source-of-truth remains NPM itself.
