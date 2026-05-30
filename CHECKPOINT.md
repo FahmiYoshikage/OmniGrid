@@ -1602,3 +1602,18 @@ Status: stabil.
 ## Status Akhir Checkpoint
 
 Status: stabil. Build passed. Uptime monitoring system aktif dengan background checker, incident tracking, dan comprehensive dashboard UI.
+
+### Update Fixes & Enhancements (Session 9 Lanjutan)
+
+1. **Fix: `SqliteError: no such column: target`**
+   - Menghapus blok deklarasi awal `uptime_history` dari `src/lib/db/schema.sql` karena menyebabkan *crash* pada `CREATE INDEX` di environment yang sudah meng-apply migration 006.
+
+2. **Fix: MagicDNS Tailscale pada Ping Checker**
+   - Menghapus parameter `-W` dari instruksi `ping` pada background checker `src/lib/uptime/checker.ts`. Parameter ini menyebabkan resolusi MagicDNS (`.ts.net`) gagal pada beberapa versi `iputils-ping`. *Timeout* kini sepenuhnya dikontrol oleh `execAsync`.
+
+3. **Fix: Visual Bug HTTP Method**
+   - Menambahkan class `bg-slate-900 text-white` pada opsi `<select>` di menu pembuatan monitor agar teks tetap terlihat pada browser/OS dengan *light mode* bawaan.
+
+4. **Feature: Docker Auto-Discovery (Scan Docker)**
+   - Menambahkan endpoint API `/api/uptime/discover` untuk mencari *container* yang terhubung ke network `omnigrid-net` menggunakan `docker ps --filter network=omnigrid-net`.
+   - Menambahkan tombol "Scan Docker" di UI Uptime Monitoring yang akan membuka modal *Docker Auto-Discovery*. Pengguna bisa langsung membuat *monitor* baru (HTTP) dengan target yang di-generate otomatis dari nama container (contoh: `http://nama_container`).
