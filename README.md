@@ -4,6 +4,37 @@
 
 OmniGrid Network Architecture gives you a secure control plane to manage servers, SSH access, topology, tunnels, identity, and workspace-scoped integrations from one place. It is built for operators who want a modern web interface without giving up Zero Trust principles.
 
+## What OmniGrid Network Architecture actually is
+
+OmniGrid Network Architecture is a Zero Trust operations standard, not just a dashboard. It defines how every server in your fleet should be prepared, networked, and managed so the control plane can operate without opening inbound ports.
+
+The standard is simple:
+
+- every managed host runs Docker
+- every managed host joins a shared external network named `omnigrid-net`
+- OmniGrid connects to hosts using SSH from the control plane only
+- Cloudflare Tunnel or another Zero Trust ingress exposes the OmniGrid UI
+- all integration secrets are workspace-scoped and encrypted at rest
+
+When those rules are met, OmniGrid can discover containers across hosts, open SSH sessions without reconfiguring firewalls, and publish internal services safely.
+
+## How OmniGrid works (mechanism)
+
+1. **Bootstrap the host**
+    - install Docker and join `omnigrid-net`
+    - ensure SSH access exists for the OmniGrid control plane
+2. **Register nodes in OmniGrid**
+    - add hostnames, SSH users, and auth methods
+    - choose whether to use SSH agent, private key, or password profile
+3. **Discover workloads**
+    - OmniGrid scans `docker ps` on every host via SSH
+    - only containers attached to `omnigrid-net` are listed
+4. **Operate from one control plane**
+    - use multi-tab SSH terminal
+    - review topology and tailnet status
+    - publish hostnames via Cloudflare Tunnel
+    - create uptime monitors for internal or external endpoints
+
 ## What OmniGrid Network Architecture is for
 
 OmniGrid Network Architecture is designed for teams and operators who need to:

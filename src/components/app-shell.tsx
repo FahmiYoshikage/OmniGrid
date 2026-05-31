@@ -71,7 +71,8 @@ export function AppShell({ children, user }: AppShellProps) {
         pathname?.startsWith('/auth/') ||
         pathname === '/' ||
         pathname === '/privacy-policy' ||
-        pathname === '/terms';
+        pathname === '/terms' ||
+        pathname === '/docs';
 
     useEffect(() => {
         setCurrentUser(user ?? null);

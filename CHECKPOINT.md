@@ -1790,6 +1790,18 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 - Halaman dokumentasi berisi bootstrap, auth setup, dan workflow Cloudflare Tunnel.
 - Menyertakan command bootstrap dari GitHub Gist.
 
+### 56. Public Docs Access + README Expansion
+
+**File edit:**
+
+- `src/components/app-shell.tsx`
+- `README.md`
+
+**Perubahan:**
+
+- `/docs` dijadikan public route agar dokumentasi bisa diakses tanpa login.
+- README diperluas untuk menjelaskan konsep OmniGrid sebagai standard Zero Trust, aturan `omnigrid-net`, dan alur operasional.
+
 ### 53. Terms & Privacy Scroll + Back Link
 
 **File edit:**
