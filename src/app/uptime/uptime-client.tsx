@@ -489,6 +489,7 @@ export function UptimeClient() {
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-white text-sm">{c.name}</span>
                           <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">{c.state}</span>
+                          {c.source && <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{c.source}</span>}
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground truncate max-w-sm">{c.image}</div>
                       </div>
