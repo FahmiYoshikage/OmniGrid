@@ -19,6 +19,7 @@ import {
   KeyRound,
   ShieldCheck,
   Settings,
+  Boxes,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ const NAV: NavItem[] = [
   { href: "/nodes", label: "Nodes", icon: Server },
   { href: "/credentials", label: "Credentials", icon: KeyRound },
   { href: "/terminal", label: "Terminal", icon: Terminal },
+  { href: "/containers", label: "Containers", icon: Boxes },
   { href: "/tunnels", label: "Cloudflare Tunnel", icon: Globe },
   { href: "/uptime", label: "Uptime", icon: Activity },
   { href: "/runbooks", label: "Runbooks", icon: PlayCircle, soon: true },

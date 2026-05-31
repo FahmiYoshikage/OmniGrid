@@ -55,7 +55,7 @@ async function execSsh(node: any, command: string): Promise<string> {
 }
 
 export async function GET() {
-  const { session, response } = await requireApiSession();
+  const { user, response } = await requireApiSession();
   if (response) return response;
 
   const allContainers: any[] = [];
@@ -73,9 +73,9 @@ export async function GET() {
   }
 
   // 2. Scan all managed nodes via SSH
-  let nodes = [];
+  let nodes: ReturnType<typeof nodesRepo.list> = [];
   try {
-    nodes = nodesRepo.list(session.workspaceId);
+    nodes = nodesRepo.list(user.workspaceId);
   } catch (err: any) {
     console.error("[uptime] failed to list nodes:", err.message);
   }

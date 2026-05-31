@@ -1623,3 +1623,24 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
    - Menambahkan kartu ringkasan "Uptime Monitors" pada `DashboardOverview` (`src/app/dashboard-overview.tsx`) yang disejajarkan dengan Tailnet Preview dan Cloudflare Summary.
    - Kartu ini menampilkan 6 monitor terakhir beserta *status indicator* warna-warni (hijau/merah/abu) dan statistik ringkas (*uptime 24h* & *avg latency*).
 
+## Update Checkpoint 2026-05-31 (Session 10) — Fleet Containers View (Dozzle-style)
+
+### 46. Containers Fleet Page
+
+**File baru:**
+- `src/app/containers/page.tsx`
+- `src/app/containers/containers-client.tsx`
+
+**File edit:**
+- `src/components/app-shell.tsx`
+
+**Perubahan:**
+- Menambahkan halaman baru `/containers` untuk tampilan Dozzle-style tanpa harus membuka SSH.
+- Header menampilkan tombol `Scan Docker` dan `Add monitor` (link ke `/uptime` untuk monitor external).
+- Panel atas menampilkan status Tailnet (online/offline + last seen) untuk semua device Tailscale.
+- Panel bawah menampilkan daftar container hasil scan `omnigrid-net` dengan filter host dan search nama/image.
+- Menambahkan navigasi sidebar baru `Containers`.
+
+**Alasan:**
+- User ingin monitoring uptime seperti Dozzle: lihat status semua machine Tailscale, lalu listing seluruh container, namun tetap mempertahankan kemampuan tambah monitor di luar Tailscale.
+
