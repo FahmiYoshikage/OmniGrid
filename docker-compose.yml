@@ -1,53 +1,68 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# OmniGrid – Docker Compose (Production)
-#
-# Usage:
-#   cp .env.example .env
-#   # Fill in secrets in .env
-#   docker compose up -d --build
-#
-# Data is persisted in a named volume. To back up:
-#   docker compose exec omnigrid cp /app/data/omnigrid.db /backup/
-# ─────────────────────────────────────────────────────────────────────────────
-
 services:
-  omnigrid:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: omnigrid
-    restart: unless-stopped
-    ports:
-      - "${OMNIGRID_PORT:-3000}:3000"
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=production
-      - OMNIGRID_HOST=0.0.0.0
-      - OMNIGRID_PORT=3000
-      - OMNIGRID_DB_PATH=/app/data/omnigrid.db
-    volumes:
-      - omnigrid_data:/app/data
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/auth/session"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: "1.0"
-        reservations:
-          memory: 128M
-          cpus: "0.25"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    # ----------------------------------------------------
+    # SERVICE 1: APLIKASI UTAMA (Web/API/Bot)
+    # ----------------------------------------------------
+    omnigrid:
+        # Gunakan 'image:' jika mengambil dari Docker Hub
+        # image: nama-image:latest
+        # ATAU gunakan 'build:' jika men-compile dari source code lokal
+        build: .
+
+        # WAJIB: Nama unik agar mudah dipanggil oleh Cloudflare Tunnel
+        container_name: omnigrid
+
+        # WAJIB: Agar otomatis nyala jika server di-restart
+        restart: unless-stopped
+
+        # OPSIONAL TAPI PENTING: File variabel rahasia
+        env_file:
+            - .env.production
+
+        environment:
+            - NODE_ENV=production
+            - OMNIGRID_HOST=0.0.0.0
+            - OMNIGRID_PORT=3000
+            - OMNIGRID_DB_PATH=/app/data/omnigrid.db
+
+        ports:
+            - "${OMNIGRID_PORT:-3000}:3000"
+
+        # OPSIONAL: Untuk menyimpan data permanen (database/upload)
+        volumes:
+            - omnigrid_data:/app/data
+
+        healthcheck:
+            test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/auth/session"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
+
+        deploy:
+            resources:
+                limits:
+                    memory: 512M
+                    cpus: "1.0"
+                reservations:
+                    memory: 128M
+                    cpus: "0.25"
+
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "3"
+
+        # WAJIB: Sambungan ke LAN Virtual OmniGrid
+        networks:
+            - omnigrid-net
+
+# ----------------------------------------------------
+# DEKLARASI JARINGAN GLOBAL (WAJIB)
+# ----------------------------------------------------
+networks:
+    omnigrid-net:
+        external: true
 
 volumes:
-  omnigrid_data:
-    driver: local
+    omnigrid_data:

@@ -189,8 +189,8 @@ Yang dilakukan:
 - Support resize terminal.
 - Support close session.
 - Fix mode `tailscale` agar auth mengikuti pola CLI SSH:
-  - SSH agent jika tersedia.
-  - Default private keys fallback dari `~/.ssh/id_ed25519`, `id_rsa`, dll.
+    - SSH agent jika tersedia.
+    - Default private keys fallback dari `~/.ssh/id_ed25519`, `id_rsa`, dll.
 - `methodLabel` dicatat di audit, tapi tidak dikirim ke `ssh2.connect`.
 
 Status: selesai untuk M4 awal.
@@ -249,10 +249,10 @@ Yang dilakukan:
 - Membuat typed status event.
 - Membuat mapping error ke hint actionable.
 - Contoh hint:
-  - Auth failed: cek SSH agent/default key/authorized_keys.
-  - Timeout: cek Tailscale connected, node online, TCP/22 reachable.
-  - Connection refused: cek sshd di target.
-  - Node not found: add ulang node dari Nodes page.
+    - Auth failed: cek SSH agent/default key/authorized_keys.
+    - Timeout: cek Tailscale connected, node online, TCP/22 reachable.
+    - Connection refused: cek sshd di target.
+    - Node not found: add ulang node dari Nodes page.
 
 Status: selesai.
 
@@ -272,16 +272,16 @@ Yang dilakukan:
 - Forward input keyboard ke backend.
 - Forward resize ke backend.
 - Menambahkan status badge pada tab:
-  - Connecting: cyan pulse.
-  - Connected: green glow.
-  - Error: red.
-  - Closed: gray.
+    - Connecting: cyan pulse.
+    - Connected: green glow.
+    - Error: red.
+    - Closed: gray.
 - Menambahkan animated connection overlay:
-  - Spinner + pulse.
-  - Progress bar.
-  - Elapsed timer.
-  - Step timeline.
-  - Error state + hint.
+    - Spinner + pulse.
+    - Progress bar.
+    - Elapsed timer.
+    - Step timeline.
+    - Error state + hint.
 - Terminal juga menulis log status warna cyan di xterm.
 
 Status: selesai untuk UX koneksi Tailscale SSH.
@@ -299,23 +299,23 @@ Yang dilakukan:
 
 - Membuat Nodes page dari table basic menjadi dashboard card grid.
 - Menambahkan stat cards:
-  - Managed nodes.
-  - Tailscale SSH.
-  - Unique tags.
+    - Managed nodes.
+    - Tailscale SSH.
+    - Unique tags.
 - Setiap node card menampilkan:
-  - Name.
-  - Hostname/IP.
-  - SSH mode.
-  - SSH port.
-  - OS.
-  - SSH user.
-  - Updated date.
-  - Tags.
+    - Name.
+    - Hostname/IP.
+    - SSH mode.
+    - SSH port.
+    - OS.
+    - SSH user.
+    - Updated date.
+    - Tags.
 - Node actions:
-  - Open SSH.
-  - View topology.
-  - Edit node.
-  - Delete node.
+    - Open SSH.
+    - View topology.
+    - Edit node.
+    - Delete node.
 - Menambahkan reusable `NodeDialog` untuk create/edit.
 - Menambahkan `PUT /api/nodes/[id]`.
 - Menambahkan `nodesRepo.update()`.
@@ -341,10 +341,10 @@ Yang dilakukan:
 - Mengganti warna root theme dari basic light ke dark premium.
 - Menambahkan background radial/gradient ambience.
 - AppShell dibuat glassmorphism:
-  - Rounded sidebar.
-  - Gradient brand logo.
-  - Active navigation style.
-  - Main content rounded glass container.
+    - Rounded sidebar.
+    - Gradient brand logo.
+    - Active navigation style.
+    - Main content rounded glass container.
 - PageHeader dibuat lebih premium dengan gradient subtle.
 - Overview cards dipoles agar tidak template basic.
 - Topology dan Terminal container disesuaikan agar tidak konflik `h-screen` dengan shell.
@@ -471,35 +471,35 @@ Aplikasi saat ini memiliki:
 ### High Priority
 
 - Polish Topology visual lanjutan:
-  - Better edge animation.
-  - Better focus mode.
-  - Better node grouping.
-  - Better minimap/control styling.
+    - Better edge animation.
+    - Better focus mode.
+    - Better node grouping.
+    - Better minimap/control styling.
 
 - Polish Terminal visual lanjutan:
-  - Terminal toolbar.
-  - Better tab close UX.
-  - Reconnect button.
-  - Session metadata panel.
+    - Terminal toolbar.
+    - Better tab close UX.
+    - Reconnect button.
+    - Session metadata panel.
 
 - Custom delete confirmation dialog:
-  - Ganti browser `confirm()` dengan modal premium.
+    - Ganti browser `confirm()` dengan modal premium.
 
 ### Medium Priority
 
 - Credentials UI:
-  - CRUD SSH key/password.
-  - Credential selection di node edit dialog.
+    - CRUD SSH key/password.
+    - Credential selection di node edit dialog.
 
 - Audit Log UI:
-  - Searchable audit viewer.
-  - Filter by actor/action/node.
+    - Searchable audit viewer.
+    - Filter by actor/action/node.
 
 - README update:
-  - Document current scripts.
-  - Document env setup.
-  - Document SSH modes.
-  - Document custom server requirement.
+    - Document current scripts.
+    - Document env setup.
+    - Document SSH modes.
+    - Document custom server requirement.
 
 ### Future Milestones
 
@@ -523,10 +523,12 @@ Aplikasi saat ini memiliki:
 ### 12. Terminal Session Persistence (Termius-style)
 
 **File:**
+
 - `src/app/terminal/terminal-workspace.tsx`
 - `src/app/terminal/terminal-pane.tsx`
 
 **Perubahan:**
+
 - Terminal tabs sekarang persisted di module-level state. Pindah halaman (misal dari Terminal ke Nodes/Overview) **tidak** menghancurkan tab dan session SSH.
 - Socket listener untuk `data` events sekarang global dan tetap mengumpulkan output walau komponen TerminalPane unmount.
 - `sessionBuffers: Map<string, string>` menyimpan output terakhir per sessionId (capped 200KB).
@@ -538,13 +540,15 @@ Aplikasi saat ini memiliki:
 ### 13. UX Auth Label Sederhana
 
 **File:**
+
 - `src/app/nodes/page.tsx`
 
 **Perubahan:**
+
 - Label SSH mode diubah dari jargon Tailscale/SSH key/Password menjadi bahasa user:
-  - `Tailscale SSH` → `Use SSH agent/default key`
-  - `SSH key` → `Use private key profile`
-  - `Password` → `Use password profile`
+    - `Tailscale SSH` → `Use SSH agent/default key`
+    - `SSH key` → `Use private key profile`
+    - `Password` → `Use password profile`
 - Placeholder profile label diganti dari "Homelab shared password" menjadi `username ssh`.
 - Stat card label "Tailscale SSH" → "Agent/default key".
 
@@ -553,30 +557,33 @@ Aplikasi saat ini memiliki:
 ### 14. Credential Manager Page
 
 **File baru:**
+
 - `src/app/credentials/page.tsx`
 
 **File edit:**
+
 - `src/lib/db/repos/credentials.ts`
 - `src/app/api/credentials/route.ts`
 - `src/app/api/credentials/[id]/route.ts` (baru)
 - `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - Menambahkan halaman `/credentials` dengan sidebar nav menu "Credentials".
 - UI card grid menampilkan semua credential profile (password dan private key).
 - Stats: total profiles, passwords, private keys.
 - Support CRUD penuh:
-  - Create: dialog "New credential profile".
-  - Edit: dialog "Edit credential profile" (PUT `/api/credentials/[id]`).
-  - Delete: tombol trash dengan konfirmasi browser (DELETE `/api/credentials/[id]`).
+    - Create: dialog "New credential profile".
+    - Edit: dialog "Edit credential profile" (PUT `/api/credentials/[id]`).
+    - Delete: tombol trash dengan konfirmasi browser (DELETE `/api/credentials/[id]`).
 - `credentialsRepo` ditambah method:
-  - `get(id)`
-  - `update(id, { label, kind, secret?, passphrase? })` — secret/passphrase optional saat edit, kalau tidak diisi pakai yang existing.
-  - `delete(id)` sudah ada.
+    - `get(id)`
+    - `update(id, { label, kind, secret?, passphrase? })` — secret/passphrase optional saat edit, kalau tidak diisi pakai yang existing.
+    - `delete(id)` sudah ada.
 - API route per-ID:
-  - `GET /api/credentials/[id]` — get single credential.
-  - `PUT /api/credentials/[id]` — update label, kind, secret, passphrase.
-  - `DELETE /api/credentials/[id]` — hapus credential.
+    - `GET /api/credentials/[id]` — get single credential.
+    - `PUT /api/credentials/[id]` — update label, kind, secret, passphrase.
+    - `DELETE /api/credentials/[id]` — hapus credential.
 - Secret tidak dikembalikan oleh API. Saat edit, field secret bisa dikosongkan (placeholder "Leave blank to keep current secret").
 - Credential label tampil readable (bukan hash panjang).
 
@@ -587,6 +594,7 @@ Aplikasi saat ini memiliki:
 **File:** `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - Menambahkan nav item `{ href: "/credentials", label: "Credentials", icon: KeyRound }` di antara "Nodes" dan "Terminal".
 
 ### Validasi Terbaru
@@ -608,18 +616,22 @@ Status: stabil.
 ## Pending / Next Steps yang Disarankan
 
 ### High Priority
+
 - Terminal buffer replay visual polish (scrollbar, fit addon re-run).
 - Custom delete confirmation dialog (ganti browser `confirm()` dengan modal).
 
 ### Medium Priority
+
 - Credential manager lanjutan: bulk delete, search/filter.
 - Audit Log UI.
 - README update.
 
 ### Future Milestones
+
 - Reverse proxy manager, uptime, runbooks, Wake-on-LAN, fleet control.
 
 ## Known Considerations (Updated)
+
 - Terminal reattach tidak menyimpan seluruh history scrollback, hanya output buffer terakhir 200KB.
 - Credential secret/passphrase tidak dikembalikan API. Edit mode: kosongkan field untuk keep existing.
 - `Button` project ini tidak mendukung `asChild`.
@@ -629,10 +641,12 @@ Status: stabil.
 ### 16. Workspace Model & Per-User Isolation
 
 **File baru:**
+
 - `src/lib/db/migrations/003_workspaces_and_settings.sql`
 - `src/lib/db/repos/workspaces.ts`
 
 **File edit:**
+
 - `src/lib/db/repos/nodes.ts`
 - `src/lib/db/repos/credentials.ts`
 - `src/lib/db/repos/audit.ts`
@@ -640,23 +654,24 @@ Status: stabil.
 - `src/lib/auth/api.ts`
 
 **Perubahan:**
+
 - Menambahkan migration `003_workspaces_and_settings.sql`:
-  - Tabel `workspaces(id, owner_id, name, slug, created_at, updated_at)`.
-  - Tabel `integration_settings(id, workspace_id, provider, key, value_enc, created_at, updated_at)`.
-  - Menambahkan kolom `workspace_id` ke tabel `nodes`, `credentials`, dan `audit_log`.
-  - Index baru untuk query scoped ke workspace.
+    - Tabel `workspaces(id, owner_id, name, slug, created_at, updated_at)`.
+    - Tabel `integration_settings(id, workspace_id, provider, key, value_enc, created_at, updated_at)`.
+    - Menambahkan kolom `workspace_id` ke tabel `nodes`, `credentials`, dan `audit_log`.
+    - Index baru untuk query scoped ke workspace.
 - Menambahkan `workspacesRepo`:
-  - `get(id)`, `getDefaultForUser(userId)`, `ensureDefaultForUser(userId, username)`.
-  - Auto-create default workspace saat pertama kali user login (via `ensureDefaultForUser`).
-  - Slug auto-generate dari username dengan dedup suffix.
+    - `get(id)`, `getDefaultForUser(userId)`, `ensureDefaultForUser(userId, username)`.
+    - Auto-create default workspace saat pertama kali user login (via `ensureDefaultForUser`).
+    - Slug auto-generate dari username dengan dedup suffix.
 - `session.ts` sekarang mengembalikan `workspaceId` di `SessionUser`.
-  - `getSessionUser()` memanggil `workspacesRepo.ensureDefaultForUser()` jika user belum punya workspace.
+    - `getSessionUser()` memanggil `workspacesRepo.ensureDefaultForUser()` jika user belum punya workspace.
 - `requireApiSession()` berubah return shape dari `{user, response}` (bukan `NextResponse | null`):
-  - `{ user: SessionUser, response: null }` jika authorized.
-  - `{ user: null, response: NextResponse.json({error:"Unauthorized"}, {status:401}) }` jika tidak.
+    - `{ user: SessionUser, response: null }` jika authorized.
+    - `{ user: null, response: NextResponse.json({error:"Unauthorized"}, {status:401}) }` jika tidak.
 - Semua repo CRUD (`nodesRepo`, `credentialsRepo`, `auditRepo`) sekarang menerima parameter `workspaceId` opsional:
-  - `list(workspaceId?)`, `get(id, workspaceId?)`, `create(input, workspaceId?)`, `update(id, input, workspaceId?)`, `delete(id, workspaceId?)`.
-  - Query WHERE secara otomatis menambahkan `AND workspace_id = ?` jika `workspaceId` disediakan.
+    - `list(workspaceId?)`, `get(id, workspaceId?)`, `create(input, workspaceId?)`, `update(id, input, workspaceId?)`, `delete(id, workspaceId?)`.
+    - Query WHERE secara otomatis menambahkan `AND workspace_id = ?` jika `workspaceId` disediakan.
 - `auditRepo` menambahkan support `workspaceId` pada `log()` dan `recent()`.
 
 **Alasan:** Fondasi isolation untuk SaaS multi-tenant. Setiap user/workspace memiliki silo data sendiri.
@@ -664,34 +679,38 @@ Status: stabil.
 ### 17. Integration Settings Vault (Encrypted Per Workspace)
 
 **File baru:**
+
 - `src/lib/db/repos/integration-settings.ts`
 
 **File edit:**
+
 - `src/lib/tailscale/client.ts`
 - `src/app/api/tailscale/devices/route.ts`
 
 **Perubahan:**
+
 - Menambahkan `integrationSettingsRepo` untuk menyimpan konfigurasi integrasi terenkripsi per workspace:
-  - Provider/key/value model: `integration_settings(workspace_id, provider, key, value_enc)`.
-  - Unique constraint pada `(workspace_id, provider, key)`.
-  - Value dienkripsi menggunakan AES-256-GCM sama seperti credential vault.
+    - Provider/key/value model: `integration_settings(workspace_id, provider, key, value_enc)`.
+    - Unique constraint pada `(workspace_id, provider, key)`.
+    - Value dienkripsi menggunakan AES-256-GCM sama seperti credential vault.
 - Implementasi `TailscaleSettingsPublic` / `TailscaleSettingsSecret`:
-  - Public: `{ tailnet, hasApiKey, updatedAt }` — aman untuk dikirim ke browser.
-  - Secret: `{ apiKey }` — tidak pernah dikirim ke browser; hanya dibaca server-side.
+    - Public: `{ tailnet, hasApiKey, updatedAt }` — aman untuk dikirim ke browser.
+    - Secret: `{ apiKey }` — tidak pernah dikirim ke browser; hanya dibaca server-side.
 - `updateTailscale(workspaceId, { tailnet, apiKey?, clearApiKey? })`:
-  - Menyimpan tailnet dan API key terenkripsi.
-  - Mendukung clear API key (delete dari DB).
+    - Menyimpan tailnet dan API key terenkripsi.
+    - Mendukung clear API key (delete dari DB).
 - `getTailnet()` di `tailscale/client.ts` sekarang menerima `{ workspaceId?: string }`:
-  - Membaca `apiKey` dan `tailnet` dari `integrationSettingsRepo.revealTailscale(workspaceId)`.
-  - Jika workspace tidak punya settings, fallback ke env global `TAILSCALE_API_KEY` / `TAILSCALE_TAILNET` untuk backward compatibility development.
-  - Cache Tailscale snapshot diubah dari variabel global singleton ke `Map<string, TailnetSnapshot>` per `workspaceId`.
-  - `clearTailnetCache()` juga support per workspace.
+    - Membaca `apiKey` dan `tailnet` dari `integrationSettingsRepo.revealTailscale(workspaceId)`.
+    - Jika workspace tidak punya settings, fallback ke env global `TAILSCALE_API_KEY` / `TAILSCALE_TAILNET` untuk backward compatibility development.
+    - Cache Tailscale snapshot diubah dari variabel global singleton ke `Map<string, TailnetSnapshot>` per `workspaceId`.
+    - `clearTailnetCache()` juga support per workspace.
 
 **Alasan:** Tailscale API key tidak boleh jadi env global untuk semua user public. Setiap workspace menyimpan key sendiri terenkripsi di database.
 
 ### 18. API Routes Scoped ke Workspace
 
 **File edit:**
+
 - `src/app/api/nodes/route.ts`
 - `src/app/api/nodes/[id]/route.ts`
 - `src/app/api/credentials/route.ts`
@@ -699,42 +718,47 @@ Status: stabil.
 - `src/app/api/tailscale/devices/route.ts`
 
 **File baru:**
+
 - `src/app/api/settings/tailscale/route.ts`
 
 **Perubahan:**
+
 - Semua API routes di atas diupdate ke pola `const { user, response } = await requireApiSession()`.
 - Jika authorized, semua repo call menyertakan `user.workspaceId`:
-  - `nodesRepo.list(user.workspaceId)` / `create(data, user.workspaceId)` / `get(id, user.workspaceId)` / `update(id, data, user.workspaceId)` / `delete(id, user.workspaceId)`.
-  - `credentialsRepo.list(user.workspaceId)` / `create(data, user.workspaceId)` / dll.
-  - `getTailnet({ workspaceId: user.workspaceId })`.
+    - `nodesRepo.list(user.workspaceId)` / `create(data, user.workspaceId)` / `get(id, user.workspaceId)` / `update(id, data, user.workspaceId)` / `delete(id, user.workspaceId)`.
+    - `credentialsRepo.list(user.workspaceId)` / `create(data, user.workspaceId)` / dll.
+    - `getTailnet({ workspaceId: user.workspaceId })`.
 - Menambahkan route baru `PUT /api/settings/tailscale` dan `GET /api/settings/tailscale`:
-  - GET: mengembalikan `TailscaleSettingsPublic` (tidak ada secret).
-  - PUT: menerima `{ tailnet: string, apiKey?: string, clearApiKey?: boolean }`, validasi Zod, update encrypted settings, lalu clear cache Tailscale.
+    - GET: mengembalikan `TailscaleSettingsPublic` (tidak ada secret).
+    - PUT: menerima `{ tailnet: string, apiKey?: string, clearApiKey?: boolean }`, validasi Zod, update encrypted settings, lalu clear cache Tailscale.
 
 **Alasan:** Memastikan data API selalu terfilter per workspace user yang sedang login.
 
 ### 19. Settings UI (Tailscale Integration Input)
 
 **File baru:**
+
 - `src/app/settings/page.tsx`
 - `src/app/settings/settings-client.tsx`
 
 **File edit:**
+
 - `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - Menambahkan halaman `/settings` ke sidebar navigation (icon `Settings`).
 - Halaman `/settings` berisi komponen client `SettingsClient` dengan:
-  - Card "Tailscale integration":
-    - Input Tailnet.
-    - Input API Key (type password, placeholder berubah tergantung apakah sudah tersimpan).
-    - Checkbox "Clear saved API key on save".
-    - Badge status "API key saved" / "Not configured".
-    - Tombol Save & Refresh.
-  - Card "SaaS security model":
-    - Penjelasan bahwa token milik workspace, bukan platform.
-    - API key tidak pernah dikembalikan ke browser.
-    - Timestamp last updated.
+    - Card "Tailscale integration":
+        - Input Tailnet.
+        - Input API Key (type password, placeholder berubah tergantung apakah sudah tersimpan).
+        - Checkbox "Clear saved API key on save".
+        - Badge status "API key saved" / "Not configured".
+        - Tombol Save & Refresh.
+    - Card "SaaS security model":
+        - Penjelasan bahwa token milik workspace, bukan platform.
+        - API key tidak pernah dikembalikan ke browser.
+        - Timestamp last updated.
 - Menggunakan `toast` (sonner) untuk notifikasi sukses/error.
 - Protected dengan `requireSessionUser()` di server component `page.tsx`.
 
@@ -743,16 +767,18 @@ Status: stabil.
 ### 20. Dashboard & Topology Scoped ke Workspace
 
 **File edit:**
+
 - `src/app/dashboard-overview.tsx`
 - `src/app/topology/page.tsx`
 - `src/app/terminal/page.tsx`
 - `src/app/page.tsx`
 
 **Perubahan:**
+
 - `DashboardOverview` sekarang menerima prop `user: SessionUser` dan memakai `user.workspaceId` untuk:
-  - `getTailnet({ workspaceId: user.workspaceId })`.
-  - `nodesRepo.list(user.workspaceId)`.
-  - `auditRepo.recent(5, user.workspaceId)`.
+    - `getTailnet({ workspaceId: user.workspaceId })`.
+    - `nodesRepo.list(user.workspaceId)`.
+    - `auditRepo.recent(5, user.workspaceId)`.
 - `TopologyPage` dan `TerminalPage` juga memakai workspace scope saat fetch data.
 
 **Alasan:** Semua halaman yang memuat data sekarang mengikuti workspace user yang login.
@@ -777,20 +803,24 @@ Status: stabil.
 ## Pending / Next Steps yang Disarankan
 
 ### High Priority
+
 - Custom delete confirmation dialog (ganti browser `confirm()` dengan modal premium).
 - Terminal buffer replay visual polish.
 
 ### Medium Priority
+
 - Audit Log UI dengan filter workspace.
 - README update mencakup konsep SaaS dan env setup baru.
 - Migration guide: cara migrasi dari env-based ke workspace-based Tailscale config.
 
 ### Future Milestones
+
 - Reverse proxy manager, uptime, runbooks, Wake-on-LAN, fleet control.
 - Multi-workspace switcher UI (jika user nanti punya banyak workspace).
 - Team/invite member ke workspace.
 
 ## Known Considerations (Updated)
+
 - Terminal reattach tidak menyimpan seluruh history scrollback, hanya output buffer terakhir 200KB.
 - Credential secret/passphrase tidak dikembalikan API. Edit mode: kosongkan field untuk keep existing.
 - `Button` project ini tidak mendukung `asChild`.
@@ -816,20 +846,23 @@ Hasil: sukses.
 **Root cause:** Setelah logout dan login ulang, cookie `github_oauth_state` yang di-set pada `/api/auth/github` tidak selalu bertahan di browser saat redirect chain GitHub → callback terjadi sangat cepat. Cookie bisa hilang karena timing `sameSite: "lax"` + redirect chain, atau karena browser agresif menghapus cookie dari respons 307.
 
 **File baru:**
+
 - `src/lib/db/migrations/004_oauth_states_and_cloudflare.sql`
 
 **File edit:**
+
 - `src/app/api/auth/github/route.ts`
 - `src/app/api/auth/github/callback/route.ts`
 
 **Perubahan:**
+
 - Migration 004: Menambahkan tabel `oauth_states(state, expires_at)` untuk menyimpan state di database.
 - `GET /api/auth/github`: Sekarang menyimpan state di **dua tempat**: cookie (primary) DAN database (fallback). Cookie `secure` di-set `false` untuk dev localhost.
 - `GET /api/auth/github/callback`: State validation sekarang memakai **dual approach**:
-  1. Cek cookie dulu (cepat, standar).
-  2. Kalau cookie tidak ada/tidak cocok, fallback ke database lookup.
-  3. Bersihkan state dari cookie dan database setelah validasi berhasil.
-  4. Expired states juga dibersihkan otomatis.
+    1. Cek cookie dulu (cepat, standar).
+    2. Kalau cookie tidak ada/tidak cocok, fallback ke database lookup.
+    3. Bersihkan state dari cookie dan database setelah validasi berhasil.
+    4. Expired states juga dibersihkan otomatis.
 - Redirect setelah login berhasil sekarang ke `/auth/success` (bukan langsung `/`), untuk menampilkan loading animation.
 
 **Alasan:** Menyelesaikan bug `invalid_state` yang terjadi berulang-ulang setelah logout → login ulang. User harus klik login berkali-kali sebelum berhasil karena cookie state hilang.
@@ -837,15 +870,17 @@ Hasil: sukses.
 ### 22. Login Success Animation Page
 
 **File baru:**
+
 - `src/app/auth/success/page.tsx`
 
 **Perubahan:**
+
 - Halaman transisi setelah OAuth callback berhasil.
 - Animasi step-by-step:
-  1. Authenticating with GitHub 🔐
-  2. Loading your workspace 📦
-  3. Syncing integrations 🔄
-  4. Preparing dashboard ✨
+    1. Authenticating with GitHub 🔐
+    2. Loading your workspace 📦
+    3. Syncing integrations 🔄
+    4. Preparing dashboard ✨
 - Logo berputar dengan border animation.
 - Progress bar yang bergerak smooth.
 - Fade out sebelum redirect ke dashboard (`/`).
@@ -856,32 +891,37 @@ Hasil: sukses.
 ### 23. Logout Animation Page
 
 **File baru:**
+
 - `src/app/auth/logout/page.tsx`
 
 **File edit:**
+
 - `src/app/api/auth/logout/route.ts`
 - `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - `POST /api/auth/logout` sekarang mengembalikan JSON `{ ok: true, displayName }` (bukan redirect).
 - `AppShell` menambahkan `LogoutButton` komponen client-side:
-  - Fetch POST ke logout API.
-  - Redirect ke `/auth/logout?name=...` dengan display name user.
-  - Loading spinner saat proses logout.
+    - Fetch POST ke logout API.
+    - Redirect ke `/auth/logout?name=...` dengan display name user.
+    - Loading spinner saat proses logout.
 - Halaman `/auth/logout`:
-  - Menampilkan "See you later, [name]!" dengan animasi bounce logo.
-  - Animated dots dan fade out.
-  - Auto-redirect ke landing page (`/`) setelah 3 detik.
+    - Menampilkan "See you later, [name]!" dengan animasi bounce logo.
+    - Animated dots dan fade out.
+    - Auto-redirect ke landing page (`/`) setelah 3 detik.
 
 **Alasan:** User ingin logout yang seamless dengan animasi, bukan langsung redirect tanpa feedback.
 
 ### 24. Mock Data Removal
 
 **File edit:**
+
 - `src/lib/tailscale/client.ts`
 - `src/lib/tailscale/types.ts`
 
 **Perubahan:**
+
 - Menghapus seluruh fungsi `mockSnapshot()` dari Tailscale client.
 - `getTailnet()` sekarang mengembalikan `null` (bukan mock data) jika Tailscale tidak dikonfigurasi.
 - Return type berubah dari `Promise<TailnetSnapshot>` menjadi `Promise<TailnetSnapshot | null>`.
@@ -892,16 +932,18 @@ Hasil: sukses.
 ### 25. Dashboard & Topology Workspace Scoping + Empty State
 
 **File edit:**
+
 - `src/app/dashboard-overview.tsx`
 - `src/app/topology/page.tsx`
 - `src/app/api/tailscale/devices/route.ts`
 
 **Perubahan:**
+
 - `DashboardOverview` sekarang memanggil `requireSessionUser()` dan scope semua data fetch ke `user.workspaceId`.
 - Jika Tailscale null (belum dikonfigurasi):
-  - Dashboard menampilkan "Tailscale not configured" card dengan link ke Settings.
-  - Topology menampilkan "not configured" empty state dengan icon dan link ke Settings.
-  - Badge "Mock data" dihapus.
+    - Dashboard menampilkan "Tailscale not configured" card dengan link ke Settings.
+    - Topology menampilkan "not configured" empty state dengan icon dan link ke Settings.
+    - Badge "Mock data" dihapus.
 - `GET /api/tailscale/devices` mengembalikan `{ error: "Tailscale not configured..." }` (404) jika null.
 
 **Alasan:** Semua halaman harus workspace-scoped dan menampilkan state yang jelas ketika integrasi belum dikonfigurasi.
@@ -909,9 +951,11 @@ Hasil: sukses.
 ### 26. NPM Proxy Manager → Cloudflare Zero Trust Connector
 
 **File baru:**
+
 - `src/app/api/settings/cloudflare/route.ts`
 
 **File edit:**
+
 - `src/lib/env.ts`
 - `src/lib/db/repos/integration-settings.ts`
 - `src/app/settings/settings-client.tsx`
@@ -920,17 +964,18 @@ Hasil: sukses.
 - `src/lib/db/migrations/004_oauth_states_and_cloudflare.sql`
 
 **Perubahan:**
+
 - **Env:** Menghapus `NPM_BASE_URL`, `NPM_EMAIL`, `NPM_PASSWORD` dari Zod schema.
 - **Integration Settings Repo:**
-  - Provider type berubah dari `"tailscale" | "npm" | "webhook"` menjadi `"tailscale" | "cloudflare" | "webhook"`.
-  - Menambahkan fungsi Cloudflare: `getCloudflarePublic()`, `revealCloudflare()`, `updateCloudflare()`.
-  - Cloudflare menyimpan: `account_id`, `tunnel_token`, `api_token` — semua terenkripsi.
+    - Provider type berubah dari `"tailscale" | "npm" | "webhook"` menjadi `"tailscale" | "cloudflare" | "webhook"`.
+    - Menambahkan fungsi Cloudflare: `getCloudflarePublic()`, `revealCloudflare()`, `updateCloudflare()`.
+    - Cloudflare menyimpan: `account_id`, `tunnel_token`, `api_token` — semua terenkripsi.
 - **API Route:** `GET/PUT /api/settings/cloudflare` untuk manage Cloudflare Zero Trust settings.
 - **Settings UI:**
-  - Menambahkan card "Cloudflare Zero Trust" di bawah Tailscale.
-  - Input: Account ID, Tunnel Token, API Token (optional, untuk monitoring domain).
-  - Checkbox "Clear saved tunnel token on save".
-  - Security model card sekarang meng-cover kedua integrasi.
+    - Menambahkan card "Cloudflare Zero Trust" di bawah Tailscale.
+    - Input: Account ID, Tunnel Token, API Token (optional, untuk monitoring domain).
+    - Checkbox "Clear saved tunnel token on save".
+    - Security model card sekarang meng-cover kedua integrasi.
 - **Sidebar Nav:** "Reverse Proxy" diganti menjadi "Cloudflare Tunnel" (masih `soon`).
 - **Migration:** Delete data `integration_settings` yang provider-nya `npm`.
 - **.env.local:** Menghapus semua referensi NPM.
@@ -940,9 +985,11 @@ Hasil: sukses.
 ### 27. Login Button Loading State
 
 **File edit:**
+
 - `src/app/login/github-login-button.tsx`
 
 **Perubahan:**
+
 - Menambahkan `useState` loading state.
 - Saat diklik, tombol menampilkan spinner + "Redirecting to GitHub..." dan disable pointer events.
 - Mencegah double-click selama redirect ke GitHub OAuth.
@@ -970,16 +1017,19 @@ Status: stabil.
 ## Pending / Next Steps yang Disarankan
 
 ### High Priority
+
 - Terminal buffer replay visual polish.
 - Custom delete confirmation dialog (ganti browser `confirm()` dengan modal premium).
 - Cloudflare Tunnel UI page (`/tunnels`) — list domains, tunnel status, monitoring.
 
 ### Medium Priority
+
 - Audit Log UI dengan filter workspace.
 - README update mencakup konsep Cloudflare Zero Trust dan env setup baru.
 - Cloudflare DNS/Zone integration — list domains assigned to tunnel.
 
 ### Future Milestones
+
 - Cloudflare Tunnel management (create/delete tunnels, assign domains).
 - Uptime monitoring.
 - Runbooks.
@@ -989,6 +1039,7 @@ Status: stabil.
 - Team/invite member ke workspace.
 
 ## Known Considerations (Updated)
+
 - Terminal reattach tidak menyimpan seluruh history scrollback, hanya output buffer terakhir 200KB.
 - Credential secret/passphrase tidak dikembalikan API. Edit mode: kosongkan field untuk keep existing.
 - `Button` project ini tidak mendukung `asChild`.
@@ -1007,45 +1058,51 @@ Status: stabil.
 **Root cause:** `/` sebelumnya dipakai untuk dua state sekaligus: landing page saat unauthenticated dan dashboard saat authenticated. Setelah OAuth success animation selesai, browser bisa masih menampilkan landing stale sampai user membuka tab baru/reload manual. Ini terasa seperti "freeze" walau session sebenarnya sudah valid.
 
 **File baru:**
+
 - `src/app/dashboard/page.tsx`
 - `src/app/api/auth/session/route.ts`
 - `src/app/landing-session-guard.tsx`
 
 **File edit:**
+
 - `src/app/page.tsx`
 - `src/app/auth/success/page.tsx`
 - `src/app/landing-page.tsx`
 - `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - Menambahkan route authenticated khusus: `/dashboard`.
 - `/` sekarang hanya landing/entrypoint:
-  - Jika belum login: render `LandingPage`.
-  - Jika sudah login: server-side redirect ke `/dashboard`.
+    - Jika belum login: render `LandingPage`.
+    - Jika sudah login: server-side redirect ke `/dashboard`.
 - OAuth success animation sekarang melakukan `router.refresh()` lalu `window.location.replace("/dashboard?welcome=1")`.
 - Menambahkan `GET /api/auth/session` untuk session check ringan.
 - Landing page punya `LandingSessionGuard` client component:
-  - Jika landing stale tapi session sudah valid, otomatis replace ke `/dashboard`.
+    - Jika landing stale tapi session sudah valid, otomatis replace ke `/dashboard`.
 
 **Alasan:** Memisahkan landing dari dashboard supaya login tidak stuck di halaman lama dan tidak perlu membuka tab baru untuk masuk dashboard.
 
 ### 29. First-Run Dashboard Onboarding
 
 **File baru:**
+
 - `src/app/dashboard-onboarding.tsx`
 
 **File edit:**
+
 - `src/app/dashboard-overview.tsx`
 
 **Perubahan:**
+
 - Setelah login sukses, `/dashboard?welcome=1` membuka overlay onboarding ringan.
 - Onboarding menjelaskan tab utama:
-  - Overview
-  - Topology
-  - Nodes
-  - Credentials
-  - Terminal
-  - Settings
+    - Overview
+    - Topology
+    - Nodes
+    - Credentials
+    - Terminal
+    - Settings
 - Bisa klik step langsung, next/back, dan skip.
 - Skip/finish disimpan ke `localStorage` key `omnigrid_onboarding_done`, sehingga tidak muncul terus-menerus.
 
@@ -1054,9 +1111,11 @@ Status: stabil.
 ### 30. Sidebar Settings Dipindah ke Bawah
 
 **File edit:**
+
 - `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - `Overview` sidebar sekarang mengarah ke `/dashboard`, bukan `/`.
 - `Settings` dikeluarkan dari nav utama dan dipindahkan ke area bawah sidebar, tepat di atas user profile/logout.
 
@@ -1065,10 +1124,12 @@ Status: stabil.
 ### 31. Production-State Tailscale Config
 
 **File edit:**
+
 - `src/lib/tailscale/client.ts`
 - `src/lib/env.ts`
 
 **Perubahan:**
+
 - `TAILSCALE_API_KEY` dan `TAILSCALE_TAILNET` dihapus dari Zod env schema.
 - Tailscale client tidak lagi membaca fallback env.
 - Tailscale snapshot hanya bekerja jika user/workspace sudah mengisi API key dan tailnet melalui Settings UI.
@@ -1079,10 +1140,12 @@ Status: stabil.
 ### 32. OAuth Cookie Secure Mode
 
 **File edit:**
+
 - `src/app/api/auth/github/route.ts`
 - `src/lib/auth/session.ts`
 
 **Perubahan:**
+
 - Cookie `github_oauth_state` sekarang memakai `secure: redirectUri.startsWith("https://")`.
 - Localhost development tetap bisa menerima cookie non-secure.
 - Production domain HTTPS memakai secure cookie.
@@ -1095,10 +1158,12 @@ Status: stabil.
 **Root cause:** Setelah OAuth berhasil, client-side navigation masih mempertahankan instance `AppShell` lama yang dibuat sebelum login dengan `user = null`. Karena root layout tidak selalu remount saat navigasi client, protected route bisa menampilkan `Login required` walaupun cookie session sebenarnya sudah valid. Membuka tab baru berhasil karena full page load membuat layout membaca cookie baru.
 
 **File edit:**
+
 - `src/components/app-shell.tsx`
 - `src/app/login/page.tsx`
 
 **Perubahan:**
+
 - `AppShell` sekarang menyimpan `currentUser` di client state.
 - Saat membuka protected route dengan `currentUser = null`, `AppShell` melakukan re-check ke `GET /api/auth/session`.
 - Selama re-check tampil screen `Restoring session`, bukan langsung `Login required`.
@@ -1112,9 +1177,11 @@ Status: stabil.
 **Root cause:** `OMNIGRID_PUBLIC_URL=http://localhost:3000` tapi user mengakses lewat `http://0.0.0.0:3000`. Browser memperlakukan kedua host sebagai origin berbeda, jadi cookie `omnigrid_session` yang di-set saat OAuth callback di `localhost` tidak terkirim saat akses lewat `0.0.0.0`. Efeknya: session terlihat kosong walaupun OAuth berhasil.
 
 **File baru:**
+
 - `src/proxy.ts` (Next.js 16 "proxy" convention, pengganti deprecated `middleware.ts`)
 
 **Perubahan:**
+
 - Proxy intercepts semua request.
 - Jika `OMNIGRID_PUBLIC_URL` dikonfigurasi dan host request berbeda dari canonical host, redirect 307 ke canonical host.
 - Contoh: `http://0.0.0.0:3000/dashboard` → `http://localhost:3000/dashboard`.
@@ -1138,11 +1205,13 @@ Status: stabil.
 ### 35. Docker Deployment (Production-Ready)
 
 **File baru/diupdate:**
+
 - `Dockerfile` — Multi-stage build (deps → build → runtime) berbasis `node:22-alpine`
 - `docker-compose.yml` — Production compose dengan health check, resource limits, logging
 - `.dockerignore` — Exclude node_modules, .env, .git, build cache
 
 **Arsitektur Docker:**
+
 ```
 Stage 1 (deps)    – npm ci
 Stage 2 (builder) – next build + prune dev
@@ -1150,6 +1219,7 @@ Stage 3 (runner)  – minimal alpine runtime
 ```
 
 **Fitur docker-compose:**
+
 - Named volume `omnigrid_data` untuk SQLite persistence
 - Health check via `/api/auth/session`
 - Resource limits (512MB RAM, 1 CPU)
@@ -1160,6 +1230,7 @@ Stage 3 (runner)  – minimal alpine runtime
 - `tini` init process untuk proper signal handling
 
 **Cara deploy:**
+
 ```bash
 cp .env.example .env
 docker compose up -d --build
@@ -1168,20 +1239,23 @@ docker compose up -d --build
 ### 36. Terminal Node Cleanup + Faster OAuth Success Redirect
 
 **Masalah:**
+
 - Dropdown node di `/terminal` masih menampilkan node lama karena page itu mengambil `nodesRepo.list()` tanpa filter workspace.
 - State tab terminal di client masih bisa menyimpan tab lama yang node-nya sudah tidak valid.
 - Setelah OAuth berhasil, halaman `/auth/success` menahan redirect terlalu lama sebelum masuk ke dashboard.
 
 **Perubahan:**
+
 - `src/app/terminal/page.tsx`
-  - Mengganti query node dari global menjadi `nodesRepo.list(user.workspaceId)`.
+    - Mengganti query node dari global menjadi `nodesRepo.list(user.workspaceId)`.
 - `src/app/terminal/terminal-workspace.tsx`
-  - Membersihkan tab SSH aktif, node pending, dan session buffer jika node sudah tidak ada di workspace aktif.
+    - Membersihkan tab SSH aktif, node pending, dan session buffer jika node sudah tidak ada di workspace aktif.
 - `src/app/auth/success/page.tsx`
-  - Mempercepat animasi sukses login dengan durasi step yang lebih singkat.
-  - Menghapus `router.refresh()` yang tidak diperlukan sebelum hard redirect ke `/dashboard?welcome=1`.
+    - Mempercepat animasi sukses login dengan durasi step yang lebih singkat.
+    - Menghapus `router.refresh()` yang tidak diperlukan sebelum hard redirect ke `/dashboard?welcome=1`.
 
 **Dampak:**
+
 - Dropdown terminal sekarang hanya menampilkan node milik workspace aktif.
 - Tab lama yang tersisa dari state client tidak lagi “nyangkut”.
 - Redirect pasca-login terasa jauh lebih cepat sambil tetap mempertahankan animasi singkat.
@@ -1189,19 +1263,22 @@ docker compose up -d --build
 ### 37. Cloudflare Tunnel Tab Activated
 
 **Masalah:**
+
 - Sidebar sudah punya item `Cloudflare Tunnel`, tetapi masih ditandai `soon` dan belum punya route `/tunnels`.
 - Settings Cloudflare Zero Trust sudah ada, tetapi belum ada halaman operasional yang memanfaatkan data workspace tersebut.
 
 **Perubahan:**
+
 - `src/app/tunnels/page.tsx`
-  - Menambahkan halaman server-side baru untuk Cloudflare Tunnel.
-  - Membaca `accountId`, status token, dan `OMNIGRID_PUBLIC_URL` untuk menampilkan readiness status.
-  - Menyediakan setup checklist dan blueprint sidecar `cloudflared` untuk deployment Docker.
-  - Menampilkan operational notes agar host publik, OAuth, dan target service tetap konsisten.
+    - Menambahkan halaman server-side baru untuk Cloudflare Tunnel.
+    - Membaca `accountId`, status token, dan `OMNIGRID_PUBLIC_URL` untuk menampilkan readiness status.
+    - Menyediakan setup checklist dan blueprint sidecar `cloudflared` untuk deployment Docker.
+    - Menampilkan operational notes agar host publik, OAuth, dan target service tetap konsisten.
 - `src/components/app-shell.tsx`
-  - Menghapus label `soon` dari navigasi `Cloudflare Tunnel` sehingga route sekarang aktif.
+    - Menghapus label `soon` dari navigasi `Cloudflare Tunnel` sehingga route sekarang aktif.
 
 **Dampak:**
+
 - Tab Cloudflare Tunnel sekarang benar-benar bisa dibuka dan dipakai sebagai panduan deployment.
 - Workspace settings yang sebelumnya hanya tersimpan di Settings kini punya tampilan operasional yang jelas.
 - Jalur migrasi dari reverse proxy ke Cloudflare Zero Trust jadi lebih konkret di UI.
@@ -1209,39 +1286,42 @@ docker compose up -d --build
 ### 38. Cloudflare API Monitoring + Published Hostname Management
 
 **Masalah:**
+
 - Integrasi Cloudflare sebelumnya baru sebatas penyimpanan credential dan halaman panduan statis.
 - Belum ada monitoring tunnel, inventory domain/DNS, daftar Access apps, atau kemampuan publish hostname langsung dari OmniGrid.
 - Status token Cloudflare juga belum sepenuhnya terlihat di UI Settings.
 
 **Perubahan:**
+
 - `src/lib/cloudflare/client.ts`
-  - Menambahkan client server-side untuk Cloudflare API.
-  - Mendukung list tunnel, baca konfigurasi ingress tunnel, list Access applications, list zones, list DNS records, serta update konfigurasi tunnel.
-  - Menambahkan sinkronisasi DNS CNAME ke `<tunnel-id>.cfargotunnel.com` saat publish hostname baru dari OmniGrid.
+    - Menambahkan client server-side untuk Cloudflare API.
+    - Mendukung list tunnel, baca konfigurasi ingress tunnel, list Access applications, list zones, list DNS records, serta update konfigurasi tunnel.
+    - Menambahkan sinkronisasi DNS CNAME ke `<tunnel-id>.cfargotunnel.com` saat publish hostname baru dari OmniGrid.
 - `src/lib/cloudflare/types.ts`
-  - Menambahkan type bersama untuk overview tunnel/domain/DNS/Access apps dan hasil publish hostname.
+    - Menambahkan type bersama untuk overview tunnel/domain/DNS/Access apps dan hasil publish hostname.
 - `src/app/api/cloudflare/overview/route.ts`
-  - Menyediakan endpoint internal untuk agregasi monitoring Cloudflare per workspace.
+    - Menyediakan endpoint internal untuk agregasi monitoring Cloudflare per workspace.
 - `src/app/api/cloudflare/published-apps/route.ts`
-  - Menyediakan endpoint internal untuk membuat atau memperbarui published hostname pada tunnel.
+    - Menyediakan endpoint internal untuk membuat atau memperbarui published hostname pada tunnel.
 - `src/app/tunnels/page.tsx`
-  - Diubah menjadi wrapper server-side yang meneruskan workspace settings dan canonical public origin ke client dashboard.
+    - Diubah menjadi wrapper server-side yang meneruskan workspace settings dan canonical public origin ke client dashboard.
 - `src/app/tunnels/tunnels-client.tsx`
-  - Menambahkan dashboard interaktif untuk:
-    - readiness Cloudflare
-    - statistik tunnel/published hostnames/Access apps/zones/DNS
-    - inventory semua tunnel dan hostname yang dipublish
-    - inventory zones dan DNS CNAME
-    - inventory Access apps
-    - form publish hostname baru langsung dari OmniGrid
+    - Menambahkan dashboard interaktif untuk:
+        - readiness Cloudflare
+        - statistik tunnel/published hostnames/Access apps/zones/DNS
+        - inventory semua tunnel dan hostname yang dipublish
+        - inventory zones dan DNS CNAME
+        - inventory Access apps
+        - form publish hostname baru langsung dari OmniGrid
 - `src/app/settings/settings-client.tsx`
-  - Menampilkan status `hasApiToken`
-  - Menambahkan opsi clear API token secara terpisah
-  - Memperjelas permission recommendation untuk Cloudflare API token
+    - Menampilkan status `hasApiToken`
+    - Menambahkan opsi clear API token secara terpisah
+    - Memperjelas permission recommendation untuk Cloudflare API token
 - `src/lib/db/repos/integration-settings.ts`
-  - Menambahkan `hasApiToken` pada public Cloudflare settings agar UI bisa membaca status token dengan benar.
+    - Menambahkan `hasApiToken` pada public Cloudflare settings agar UI bisa membaca status token dengan benar.
 
 **Dampak:**
+
 - OmniGrid sekarang bisa memonitor semua tunnel yang terlihat oleh Cloudflare API token workspace.
 - Published hostnames, Access apps, zones, dan DNS records sekarang tampil rapi di satu dashboard.
 - User bisa menambah atau memperbarui published hostname tunnel langsung dari OmniGrid.
@@ -1265,6 +1345,7 @@ Hasil: sukses.
 ### 39. Multi-Provider Authentication Foundation
 
 **File baru:**
+
 - `src/lib/db/migrations/005_multi_auth.sql`
 - `src/lib/auth/accounts.ts`
 - `src/lib/auth/availability.ts`
@@ -1272,16 +1353,18 @@ Hasil: sukses.
 - `src/lib/auth/oauth-requests.ts`
 
 **File edit:**
+
 - `src/lib/auth/github.ts`
 - `src/lib/auth/user.ts`
 - `src/lib/auth/session.ts`
 - `src/lib/env.ts`
 
 **Perubahan:**
+
 - Menambahkan migration `005_multi_auth.sql` untuk tabel:
-  - `auth_identities` untuk relasi banyak provider ke satu user OmniGrid.
-  - `auth_oauth_requests` untuk state OAuth + PKCE verifier.
-  - `auth_email_tokens` untuk magic-link login/email linking.
+    - `auth_identities` untuk relasi banyak provider ke satu user OmniGrid.
+    - `auth_oauth_requests` untuk state OAuth + PKCE verifier.
+    - `auth_email_tokens` untuk magic-link login/email linking.
 - Menambahkan helper generic `resolveUserForSignIn()` dan `linkIdentityToUser()`.
 - Session user dibuat provider-agnostic; tidak lagi GitHub-centric.
 - Menambahkan `getAuthAvailability()` agar UI/server tahu provider mana yang aktif berdasarkan env.
@@ -1290,12 +1373,14 @@ Hasil: sukses.
 - `fetchGitHubUser()` diperluas agar membawa verified email untuk linking akun yang lebih aman.
 
 **Dampak:**
+
 - Satu akun OmniGrid sekarang bisa login via GitHub, Google, email magic link, atau kombinasi beberapa metode sekaligus.
 - Existing user GitHub tetap kompatibel dan bisa ditautkan dengan provider lain.
 
 ### 40. GitHub, Google, dan Email Magic-Link Routes
 
 **File baru:**
+
 - `src/app/api/auth/google/route.ts`
 - `src/app/api/auth/google/callback/route.ts`
 - `src/app/api/auth/email/request/route.ts`
@@ -1305,33 +1390,38 @@ Hasil: sukses.
 - `src/types/nodemailer.d.ts`
 
 **File edit:**
+
 - `src/app/api/auth/github/route.ts`
 - `src/app/api/auth/github/callback/route.ts`
 - `package.json`
 - `package-lock.json`
 
 **Perubahan:**
+
 - `GET /api/auth/github` sekarang memakai generic OAuth request storage dan mendukung mode `intent=link`.
 - `GET /api/auth/github/callback` sekarang bisa:
-  - login normal seperti sebelumnya
-  - atau menautkan identitas GitHub ke user yang sedang login
+    - login normal seperti sebelumnya
+    - atau menautkan identitas GitHub ke user yang sedang login
 - Menambahkan `GET /api/auth/google` dan callback Google OAuth dengan PKCE.
 - Menambahkan flow passwordless email:
-  - `POST /api/auth/email/request` untuk kirim magic link
-  - `GET /api/auth/email/verify` untuk consume token, login, atau link email
+    - `POST /api/auth/email/request` untuk kirim magic link
+    - `GET /api/auth/email/verify` untuk consume token, login, atau link email
 - Menambahkan `GET /api/auth/methods` untuk membaca identity yang sudah linked + availability provider.
 - Menambahkan `nodemailer` dependency dan Gmail SMTP sender helper untuk email auth.
 
 **Dampak:**
+
 - Backend multi-auth sekarang end-to-end berjalan untuk 3 metode login.
 - Email login tidak menyimpan password; hanya one-time secure link.
 
 ### 41. Login Page & Settings Linked Methods UX
 
 **File baru:**
+
 - `src/app/login/login-methods.tsx`
 
 **File edit:**
+
 - `src/app/login/page.tsx`
 - `src/app/settings/page.tsx`
 - `src/app/settings/settings-client.tsx`
@@ -1339,61 +1429,69 @@ Hasil: sukses.
 - `src/app/auth/success/page.tsx`
 
 **Perubahan:**
+
 - Login page sekarang menampilkan semua metode yang tersedia:
-  - GitHub OAuth
-  - Google OAuth
-  - Email magic link
+    - GitHub OAuth
+    - Google OAuth
+    - Email magic link
 - Error login diperluas untuk invalid email link dan state linking.
 - Settings page sekarang memiliki panel `Login methods` untuk:
-  - melihat metode yang sudah linked
-  - connect GitHub
-  - connect Google
-  - kirim email link untuk menautkan email auth
+    - melihat metode yang sudah linked
+    - connect GitHub
+    - connect Google
+    - kirim email link untuk menautkan email auth
 - Menambahkan feedback toast untuk success/failure hasil linking setelah redirect callback.
 - Auth success screen dibuat generic berdasarkan provider, tidak hanya GitHub.
 - Copy di shell diubah agar tidak GitHub-only lagi.
 
 **Dampak:**
+
 - User bisa menautkan beberapa metode sign-in dari UI tanpa membuat akun terpisah.
 - UX login dan relink jadi jauh lebih jelas.
 
 ### 42. Dashboard Overview: Cloudflare Summary Ringkas
 
 **File edit:**
+
 - `src/app/dashboard-overview.tsx`
 
 **Perubahan:**
+
 - Menambahkan stat card `Cloudflare hostnames` di overview.
 - Menambahkan card `Cloudflare summary` yang menampilkan:
-  - jumlah tunnel
-  - jumlah published hostname
-  - jumlah Access apps
-  - daftar hostname publik teratas
+    - jumlah tunnel
+    - jumlah published hostname
+    - jumlah Access apps
+    - daftar hostname publik teratas
 - Jika Cloudflare workspace belum dikonfigurasi, dashboard menampilkan CTA ke Settings.
 - Header overview sekarang menampilkan badge `Cloudflare API` jika integration siap.
 
 **Dampak:**
+
 - Permintaan user untuk ringkasan Cloudflare di Overview sekarang terpenuhi.
 - Dashboard terasa lebih operasional sebagai control plane harian.
 
 ### 43. Environment Example & README Repositioning
 
 **File edit:**
+
 - `.env.example`
 - `README.md`
 
 **Perubahan:**
+
 - `.env.example` sekarang mendokumentasikan:
-  - GitHub OAuth env
-  - Google OAuth env
-  - Gmail SMTP env
-  - `AUTH_EMAIL_FROM`
+    - GitHub OAuth env
+    - Google OAuth env
+    - Gmail SMTP env
+    - `AUTH_EMAIL_FROM`
 - README dirombak untuk memposisikan OmniGrid sebagai:
-  - Zero Trust server operations platform
-  - control plane untuk SSH, topology, Cloudflare Tunnel, dan linked authentication
+    - Zero Trust server operations platform
+    - control plane untuk SSH, topology, Cloudflare Tunnel, dan linked authentication
 - README juga diperbarui dengan quick start, auth setup, dan positioning produk yang lebih matang.
 
 **Dampak:**
+
 - Dokumentasi sekarang lebih selaras dengan arah produk yang lebih proper sebagai solusi manajemen server berbasis Zero Trust.
 
 ### Validasi Terbaru
@@ -1409,11 +1507,11 @@ Hasil:
 - Build sukses.
 - TypeScript passed tanpa error.
 - Route auth baru ter-generate:
-  - `ƒ /api/auth/google`
-  - `ƒ /api/auth/google/callback`
-  - `ƒ /api/auth/email/request`
-  - `ƒ /api/auth/email/verify`
-  - `ƒ /api/auth/methods`
+    - `ƒ /api/auth/google`
+    - `ƒ /api/auth/google/callback`
+    - `ƒ /api/auth/email/request`
+    - `ƒ /api/auth/email/verify`
+    - `ƒ /api/auth/methods`
 
 Status: stabil.
 
@@ -1426,48 +1524,54 @@ Status: stabil. Build passed. Multi-auth GitHub/Google/email aktif, linked metho
 ### 39. Database Migration: Uptime Tables
 
 **File baru:**
+
 - `src/lib/db/migrations/006_uptime_monitors.sql`
 
 **Perubahan:**
+
 - Menambahkan tabel `uptime_monitors`:
-  - Configurable monitors per workspace.
-  - Support 3 jenis: `http`, `tcp`, `ping`.
-  - Field: `name`, `kind`, `target`, `interval_sec`, `timeout_ms`, `method`, `expected_status`, `headers_json`, `body`, `enabled`, `notify`.
-  - Index pada `(workspace_id, enabled)`.
+    - Configurable monitors per workspace.
+    - Support 3 jenis: `http`, `tcp`, `ping`.
+    - Field: `name`, `kind`, `target`, `interval_sec`, `timeout_ms`, `method`, `expected_status`, `headers_json`, `body`, `enabled`, `notify`.
+    - Index pada `(workspace_id, enabled)`.
 - Menghapus dan membuat ulang tabel `uptime_history` (tabel lama tidak pernah dipakai di production):
-  - Sekarang terikat ke `monitor_id` via foreign key `ON DELETE CASCADE`.
-  - Workspace-scoped.
-  - Field tambahan: `status_code`, `region`.
-  - Index pada `(monitor_id, ts DESC)` dan `(workspace_id, ts DESC)`.
+    - Sekarang terikat ke `monitor_id` via foreign key `ON DELETE CASCADE`.
+    - Workspace-scoped.
+    - Field tambahan: `status_code`, `region`.
+    - Index pada `(monitor_id, ts DESC)` dan `(workspace_id, ts DESC)`.
 - Menambahkan tabel `uptime_incidents`:
-  - Tracking transisi state (up→down, down→up).
-  - Field: `started_at`, `resolved_at`, `cause`, `checks_failed`.
-  - Index pada `(monitor_id, started_at DESC)` dan `(workspace_id, started_at DESC)`.
+    - Tracking transisi state (up→down, down→up).
+    - Field: `started_at`, `resolved_at`, `cause`, `checks_failed`.
+    - Index pada `(monitor_id, started_at DESC)` dan `(workspace_id, started_at DESC)`.
 
 **Alasan:** Fondasi data untuk uptime monitoring yang comprehensive. Monitors terpisah dari history agar bisa CRUD monitor tanpa kehilangan data historis.
 
 ### 40. Uptime Repository
 
 **File baru:**
+
 - `src/lib/db/repos/uptime.ts`
 
 **Perubahan:**
+
 - `uptimeRepo` dengan fitur lengkap:
-  - **Monitor CRUD:** `listMonitors()`, `listEnabledMonitors()`, `listAllEnabled()`, `getMonitor()`, `createMonitor()`, `updateMonitor()`, `deleteMonitor()`, `toggleMonitor()`.
-  - **History:** `recordCheck()`, `recentChecks()`, `lastCheck()`.
-  - **Aggregasi:** `uptimePercentage()` (24h/7d/30d), `latencyStats()` (avg/P95/min/max), `statusBar()` (90 time-buckets untuk visualisasi).
-  - **Incident lifecycle:** `activeIncident()`, `openIncident()`, `resolveIncident()`, `incrementIncidentFailures()`, `recentIncidents()`, `workspaceIncidents()`.
-  - **Stats builder:** `getMonitorStats()` (full stats per monitor), `getWorkspaceStats()` (semua monitor), `workspaceSummary()` (angka ringkasan untuk dashboard).
-  - **Cleanup:** `pruneHistory()` (hapus data >90 hari).
+    - **Monitor CRUD:** `listMonitors()`, `listEnabledMonitors()`, `listAllEnabled()`, `getMonitor()`, `createMonitor()`, `updateMonitor()`, `deleteMonitor()`, `toggleMonitor()`.
+    - **History:** `recordCheck()`, `recentChecks()`, `lastCheck()`.
+    - **Aggregasi:** `uptimePercentage()` (24h/7d/30d), `latencyStats()` (avg/P95/min/max), `statusBar()` (90 time-buckets untuk visualisasi).
+    - **Incident lifecycle:** `activeIncident()`, `openIncident()`, `resolveIncident()`, `incrementIncidentFailures()`, `recentIncidents()`, `workspaceIncidents()`.
+    - **Stats builder:** `getMonitorStats()` (full stats per monitor), `getWorkspaceStats()` (semua monitor), `workspaceSummary()` (angka ringkasan untuk dashboard).
+    - **Cleanup:** `pruneHistory()` (hapus data >90 hari).
 
 **Alasan:** Repository tunggal yang mengcover seluruh kebutuhan uptime dari CRUD sampai agregasi dashboard.
 
 ### 41. Background Uptime Checker Engine
 
 **File baru:**
+
 - `src/lib/uptime/checker.ts`
 
 **Perubahan:**
+
 - **HTTP checker:** `fetch()` dengan custom headers, method, body, expected status code. Timeout via `AbortController`.
 - **TCP checker:** `net.createConnection()` dengan timeout. Mengukur latency sampai TCP handshake selesai.
 - **Ping checker:** `ping -c 1` via child process. Mengekstrak RTT dari output ping.
@@ -1483,10 +1587,12 @@ Status: stabil. Build passed. Multi-auth GitHub/Google/email aktif, linked metho
 ### 42. API Routes Uptime
 
 **File baru:**
+
 - `src/app/api/uptime/monitors/route.ts`
 - `src/app/api/uptime/monitors/[id]/route.ts`
 
 **Perubahan:**
+
 - `GET /api/uptime/monitors` — List semua monitor beserta stats lengkap dan summary workspace.
 - `POST /api/uptime/monitors` — Buat monitor baru. Validasi Zod untuk semua field. Validasi format target berdasarkan kind (URL untuk http, host:port untuk tcp).
 - `GET /api/uptime/monitors/[id]` — Detail monitor dengan stats lengkap dan 200 checks terakhir.
@@ -1498,35 +1604,39 @@ Status: stabil. Build passed. Multi-auth GitHub/Google/email aktif, linked metho
 ### 43. Uptime Dashboard UI
 
 **File baru:**
+
 - `src/app/uptime/page.tsx`
 - `src/app/uptime/uptime-client.tsx`
 
 **Perubahan:**
+
 - Server page dengan `requireSessionUser()`.
 - Client component `UptimeClient` dengan fitur:
-  - **Summary stats bar:** Total monitors, operational, down, paused, avg uptime 24h.
-  - **Monitor list:** Setiap monitor menampilkan status dot (animated pulse untuk down), kind icon, name, target, mini status bar (45 slots), uptime %, avg latency.
-  - **Expandable detail per monitor:**
-    - Action buttons: Check Now, Pause/Resume, Edit, Delete.
-    - Stats grid: Uptime 24h/7d/30d, checks count, avg/P95/min/max latency, interval.
-    - Full 24h status bar (90 slots) dengan hover tooltip.
-    - Active incident alert card.
-    - Recent incidents timeline dengan status badge.
-    - Last error display.
-  - **Create/Edit modal:**
-    - Name, type selector (HTTP/TCP/Ping), target input with hint.
-    - HTTP-specific: method selector, expected status.
-    - Interval dan timeout config.
-    - Enable/notify toggles.
-  - **Auto-refresh:** Polling setiap 30 detik.
-  - **Empty state:** Informative CTA saat belum ada monitor.
+    - **Summary stats bar:** Total monitors, operational, down, paused, avg uptime 24h.
+    - **Monitor list:** Setiap monitor menampilkan status dot (animated pulse untuk down), kind icon, name, target, mini status bar (45 slots), uptime %, avg latency.
+    - **Expandable detail per monitor:**
+        - Action buttons: Check Now, Pause/Resume, Edit, Delete.
+        - Stats grid: Uptime 24h/7d/30d, checks count, avg/P95/min/max latency, interval.
+        - Full 24h status bar (90 slots) dengan hover tooltip.
+        - Active incident alert card.
+        - Recent incidents timeline dengan status badge.
+        - Last error display.
+    - **Create/Edit modal:**
+        - Name, type selector (HTTP/TCP/Ping), target input with hint.
+        - HTTP-specific: method selector, expected status.
+        - Interval dan timeout config.
+        - Enable/notify toggles.
+    - **Auto-refresh:** Polling setiap 30 detik.
+    - **Empty state:** Informative CTA saat belum ada monitor.
 
 ### 44. Server Lifecycle Integration
 
 **File edit:**
+
 - `server/index.ts`
 
 **Perubahan:**
+
 - Import `startUptimeChecker` dan `stopUptimeChecker`.
 - `startUptimeChecker()` dipanggil setelah `httpServer.listen()` berhasil.
 - `stopUptimeChecker()` dipanggil pada `shutdown()` sebelum `io.close()`.
@@ -1536,9 +1646,11 @@ Status: stabil. Build passed. Multi-auth GitHub/Google/email aktif, linked metho
 ### 45. Dashboard Overview Integration
 
 **File edit:**
+
 - `src/app/dashboard-overview.tsx`
 
 **Perubahan:**
+
 - Import `uptimeRepo`.
 - Stat card "Uptime checks" yang sebelumnya "coming soon" sekarang menampilkan data real: `up / total` monitors dan `avg uptime 24h %`.
 - Jika belum ada monitor, menampilkan "—" dengan hint "Add monitors".
@@ -1546,9 +1658,11 @@ Status: stabil. Build passed. Multi-auth GitHub/Google/email aktif, linked metho
 ### 46. Sidebar Navigation Update
 
 **File edit:**
+
 - `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - Menghapus `soon: true` dari nav item Uptime. Route `/uptime` sekarang aktif.
 
 ### Validasi Terbaru
@@ -1572,15 +1686,18 @@ Status: stabil.
 ## Pending / Next Steps yang Disarankan
 
 ### High Priority
+
 - Custom delete confirmation dialog (ganti browser `confirm()` dengan modal premium).
 - Uptime webhook notifications (kirim alert ke webhook saat incident open/resolve).
 
 ### Medium Priority
+
 - Audit Log UI dengan filter workspace.
 - Uptime public status page (shareable URL untuk monitoring publik).
 - Uptime response time chart (line chart latency over time).
 
 ### Future Milestones
+
 - Runbooks.
 - Wake-on-LAN.
 - Fleet control.
@@ -1589,6 +1706,7 @@ Status: stabil.
 - Multi-region uptime probing.
 
 ## Known Considerations (Updated)
+
 - Terminal reattach tidak menyimpan seluruh history scrollback, hanya output buffer terakhir 200KB.
 - Credential secret/passphrase tidak dikembalikan API. Edit mode: kosongkan field untuk keep existing.
 - `Button` project ini tidak mendukung `asChild`.
@@ -1606,35 +1724,38 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 ### Update Fixes & Enhancements (Session 9 Lanjutan)
 
 1. **Fix: `SqliteError: no such column: target`**
-   - Menghapus blok deklarasi awal `uptime_history` dari `src/lib/db/schema.sql` karena menyebabkan *crash* pada `CREATE INDEX` di environment yang sudah meng-apply migration 006.
+    - Menghapus blok deklarasi awal `uptime_history` dari `src/lib/db/schema.sql` karena menyebabkan _crash_ pada `CREATE INDEX` di environment yang sudah meng-apply migration 006.
 
 2. **Fix: MagicDNS Tailscale pada Ping Checker**
-   - Menghapus parameter `-W` dari instruksi `ping` pada background checker `src/lib/uptime/checker.ts`. Parameter ini menyebabkan resolusi MagicDNS (`.ts.net`) gagal pada beberapa versi `iputils-ping`. *Timeout* kini sepenuhnya dikontrol oleh `execAsync`.
+    - Menghapus parameter `-W` dari instruksi `ping` pada background checker `src/lib/uptime/checker.ts`. Parameter ini menyebabkan resolusi MagicDNS (`.ts.net`) gagal pada beberapa versi `iputils-ping`. _Timeout_ kini sepenuhnya dikontrol oleh `execAsync`.
 
 3. **Fix: Visual Bug HTTP Method**
-   - Menambahkan class `bg-slate-900 text-white` pada opsi `<select>` di menu pembuatan monitor agar teks tetap terlihat pada browser/OS dengan *light mode* bawaan.
+    - Menambahkan class `bg-slate-900 text-white` pada opsi `<select>` di menu pembuatan monitor agar teks tetap terlihat pada browser/OS dengan _light mode_ bawaan.
 
 4. **Feature: Multi-Node Docker Auto-Discovery (Scan Docker)**
-   - Menambahkan endpoint API `/api/uptime/discover` untuk mencari *container* yang terhubung ke network `omnigrid-net`.
-   - Mengintegrasikan fungsi pencarian agar tidak hanya mencari di server lokal, tetapi juga **login via SSH secara otomatis (menggunakan kredensial OmniGrid)** ke seluruh mesin node yang terdaftar di `nodesRepo` dan mengeksekusi `docker ps` di sana. Ini sangat selaras dengan standar OmniGrid di mana semua mesin yang dikontrol menggunakan docker-compose yang terhubung ke jaringan `omnigrid-net`.
-   - Menambahkan tombol "Scan Docker" di UI Uptime Monitoring yang akan membuka modal *Docker Auto-Discovery*. Pengguna bisa melihat container mana yang berjalan di node yang mana, lalu membuat *monitor* baru dengan sekali klik.
+    - Menambahkan endpoint API `/api/uptime/discover` untuk mencari _container_ yang terhubung ke network `omnigrid-net`.
+    - Mengintegrasikan fungsi pencarian agar tidak hanya mencari di server lokal, tetapi juga **login via SSH secara otomatis (menggunakan kredensial OmniGrid)** ke seluruh mesin node yang terdaftar di `nodesRepo` dan mengeksekusi `docker ps` di sana. Ini sangat selaras dengan standar OmniGrid di mana semua mesin yang dikontrol menggunakan docker-compose yang terhubung ke jaringan `omnigrid-net`.
+    - Menambahkan tombol "Scan Docker" di UI Uptime Monitoring yang akan membuka modal _Docker Auto-Discovery_. Pengguna bisa melihat container mana yang berjalan di node yang mana, lalu membuat _monitor_ baru dengan sekali klik.
 
 5. **Feature: Uptime Preview pada Dashboard Overview**
-   - Menambahkan kartu ringkasan "Uptime Monitors" pada `DashboardOverview` (`src/app/dashboard-overview.tsx`) yang disejajarkan dengan Tailnet Preview dan Cloudflare Summary.
-   - Kartu ini menampilkan 6 monitor terakhir beserta *status indicator* warna-warni (hijau/merah/abu) dan statistik ringkas (*uptime 24h* & *avg latency*).
+    - Menambahkan kartu ringkasan "Uptime Monitors" pada `DashboardOverview` (`src/app/dashboard-overview.tsx`) yang disejajarkan dengan Tailnet Preview dan Cloudflare Summary.
+    - Kartu ini menampilkan 6 monitor terakhir beserta _status indicator_ warna-warni (hijau/merah/abu) dan statistik ringkas (_uptime 24h_ & _avg latency_).
 
 ## Update Checkpoint 2026-05-31 (Session 10) — Fleet Containers View (Dozzle-style)
 
 ### 46. Containers Fleet Page
 
 **File baru:**
+
 - `src/app/containers/page.tsx`
 - `src/app/containers/containers-client.tsx`
 
 **File edit:**
+
 - `src/components/app-shell.tsx`
 
 **Perubahan:**
+
 - Menambahkan halaman baru `/containers` untuk tampilan Dozzle-style tanpa harus membuka SSH.
 - Header menampilkan tombol `Scan Docker` dan `Add monitor` (link ke `/uptime` untuk monitor external).
 - Panel atas menampilkan status Tailnet (online/offline + last seen) untuk semua device Tailscale.
@@ -1642,5 +1763,35 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 - Menambahkan navigasi sidebar baru `Containers`.
 
 **Alasan:**
+
 - User ingin monitoring uptime seperti Dozzle: lihat status semua machine Tailscale, lalu listing seluruh container, namun tetap mempertahankan kemampuan tambah monitor di luar Tailscale.
 
+## Update Checkpoint 2026-05-31 (Session 11) — Production Compose & Dockerfile Alignment
+
+### 47. Production Compose Template Adoption
+
+**File edit:**
+
+- `docker-compose.yml`
+
+**Perubahan:**
+
+- Menyesuaikan compose dengan template standar OmniGrid, memakai `.env.production` sebagai sumber env.
+- Menetapkan service `omnigrid` + `container_name` agar konsisten untuk Cloudflare Tunnel.
+- Menambahkan port mapping, health check, logging rotation, dan resource limits.
+- Persistensi data SQLite via volume `omnigrid_data` dan koneksi ke external network `omnigrid-net`.
+
+### 48. Dockerfile Runtime Hardening
+
+**File edit:**
+
+- `Dockerfile`
+
+**Perubahan:**
+
+- Menjaga runtime tetap bisa menjalankan custom server TypeScript dengan menambahkan `tsx` pada stage production image.
+- Tetap mempertahankan multi-stage build dan non-root user untuk keamanan.
+
+**Alasan:**
+
+- Menyamakan deployment Docker dengan standar OmniGrid (external `omnigrid-net`, .env.production), sambil memastikan server TS tetap jalan di production container.

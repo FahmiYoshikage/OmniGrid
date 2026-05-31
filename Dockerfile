@@ -30,7 +30,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Rebuild native modules (better-sqlite3) for production without dev deps
-RUN npm ci --omit=dev && npm rebuild better-sqlite3
+# Keep tsx available for running the TypeScript custom server.
+RUN npm ci --omit=dev && npm rebuild better-sqlite3 && npm install --no-save tsx@4.22.0
 
 # ── Stage 3: Production runtime ──────────────────────────────────────────────
 FROM node:22-alpine AS runner
