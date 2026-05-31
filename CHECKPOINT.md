@@ -2,6 +2,37 @@
 
 Tanggal: 2026-05-16
 
+## Update Checkpoint 2026-05-31 (Session 12) — Landing Page Architecture Rewrite
+
+### 57. Landing Page Comprehensiveness Pass
+
+**File baru:**
+
+- `src/app/copy-command-button.tsx`
+
+**File edit:**
+
+- `src/app/landing-page.tsx`
+
+**Perubahan:**
+
+- Merombak landing page agar menjelaskan OmniGrid sebagai Zero Trust operations standard, bukan sekadar dashboard.
+- Memindahkan one-line bootstrap command ke area hero/viewport pertama dengan tombol copy client-side.
+- Menyusun ulang narasi landing menjadi alur yang lebih komprehensif:
+    - brand/value proposition
+    - one-line bootstrap command
+    - host baseline dan aturan arsitektur
+    - workflow bootstrap/register/discover/operate
+    - capability matrix untuk vault, topology, Cloudflare, dashboard, identity, dan workspace scope
+- Mengganti layout lama yang menaruh docs dan bootstrap di bawah menjadi hierarki lebih modern untuk website teknologi: command actionable muncul lebih awal, dokumentasi menjadi pendalaman.
+- Menjaga halaman utama tetap Server Component; interaktivitas hanya dipisah ke `CopyCommandButton` sebagai Client Component kecil.
+
+**Verifikasi:**
+
+- `npm run build` berhasil setelah dijalankan dengan akses jaringan karena `next/font` perlu mengambil `Geist` dan `Geist Mono` dari Google Fonts.
+- `npm run lint` masih gagal karena lint lama di banyak file yang tidak disentuh pada sesi ini, termasuk `src/app/api/uptime/discover/route.ts`, `src/app/auth/success/page.tsx`, `src/app/containers/containers-client.tsx`, `src/app/credentials/page.tsx`, `src/app/nodes/page.tsx`, `src/app/settings/settings-client.tsx`, `src/app/terminal/terminal-pane.tsx`, `src/app/terminal/terminal-workspace.tsx`, `src/app/tunnels/tunnels-client.tsx`, `src/app/uptime/uptime-client.tsx`, dan `src/components/app-shell.tsx`.
+- Dev server sudah ada berjalan di `http://localhost:3000` dengan PID 19, sehingga server baru tidak distart ulang.
+
 ## Ringkasan Objective
 
 OmniGrid dibangun sebagai homelab command center berbasis Next.js untuk mengelola node, visualisasi Tailscale topology, web SSH terminal, audit log, proxy manager, uptime, runbooks, Wake-on-LAN, dan fleet control.
