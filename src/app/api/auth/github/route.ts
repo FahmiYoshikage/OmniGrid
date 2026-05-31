@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getGitHub, getGitHubOAuthRedirectUri } from "@/lib/auth/github";
 import { getSessionUser } from "@/lib/auth/session";
 import { createOAuthRequest } from "@/lib/auth/oauth-requests";
+import { buildPublicUrl } from "@/lib/auth/urls";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -9,7 +10,7 @@ export async function GET(request: Request) {
   const sessionUser = intent === "link" ? await getSessionUser() : null;
 
   if (intent === "link" && !sessionUser) {
-    return NextResponse.redirect(new URL("/login?error=login_required", request.url));
+    return NextResponse.redirect(buildPublicUrl("/login?error=login_required", request.url));
   }
 
   const github = getGitHub();

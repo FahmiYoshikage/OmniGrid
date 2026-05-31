@@ -1813,6 +1813,25 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 
 - Menambahkan satu baris bootstrap OmniGrid via GitHub Gist.
 
+### 55. OAuth Redirect Base Fix (0.0.0.0 issue)
+
+**File baru:**
+
+- `src/lib/auth/urls.ts`
+
+**File edit:**
+
+- `src/app/api/auth/google/route.ts`
+- `src/app/api/auth/google/callback/route.ts`
+- `src/app/api/auth/github/route.ts`
+- `src/app/api/auth/github/callback/route.ts`
+- `src/app/api/auth/email/verify/route.ts`
+
+**Perubahan:**
+
+- Redirect pasca OAuth sekarang memakai `OMNIGRID_PUBLIC_URL` sebagai base, bukan `request.url`.
+- Mencegah redirect sukses login ke host `0.0.0.0` ketika reverse proxy memakai host internal.
+
 ## Update Checkpoint 2026-05-31 (Session 11) — Production Compose & Dockerfile Alignment
 
 ### 47. Production Compose Template Adoption
