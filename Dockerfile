@@ -29,7 +29,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_DISABLE_TURBOPACK=1
 
-RUN npm run build
+RUN npm run build -- --webpack
 
 # Rebuild native modules (better-sqlite3) for production without dev deps
 # Keep tsx available for running the TypeScript custom server.

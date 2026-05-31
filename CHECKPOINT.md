@@ -1810,3 +1810,17 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 **Alasan:**
 
 - `ssh2` adalah dependensi native untuk API route `/api/uptime/discover`; Turbopack gagal menangani asset non-ESM sehingga build Docker gagal. Menonaktifkan Turbopack membuat build stabil.
+
+### 50. Docker Build Explicit Webpack Flag
+
+**File edit:**
+
+- `Dockerfile`
+
+**Perubahan:**
+
+- Menjalankan `npm run build -- --webpack` di Docker agar build selalu menggunakan webpack walau Turbopack default aktif.
+
+**Alasan:**
+
+- Env `NEXT_DISABLE_TURBOPACK` belum menghentikan Turbopack pada build production, sehingga flag webpack dipaksa eksplisit untuk stabilitas.
