@@ -204,8 +204,9 @@ export async function DashboardOverview({ showOnboarding = false }: { showOnboar
               </div>
             ) : (
               <ul className="space-y-1.5 text-sm">
-                {uptimeRepo.list(user.workspaceId).slice(0, 6).map((monitor) => {
-                  const stats = uptimeRepo.monitorStats(monitor.id);
+                {uptimeRepo.listMonitors(user.workspaceId).slice(0, 6).map((monitor) => {
+                  const stats = uptimeRepo.getMonitorStats(monitor.id);
+                  if (!stats) return null;
                   const isUp = stats.currentStatus === "up";
                   const isDown = stats.currentStatus === "down";
                   return (

@@ -91,7 +91,7 @@ interface AuthBundle extends Pick<ConnectConfig, "username" | "privateKey" | "pa
   methodLabel: string;
 }
 
-function buildAuth(node: NodeRow): AuthBundle {
+export function buildAuth(node: NodeRow): AuthBundle {
   const username = node.ssh_user ?? "root";
 
   if (node.ssh_mode === "password") {
