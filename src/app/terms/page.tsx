@@ -115,6 +115,19 @@ export default function TermsPage() {
               Terms of Service
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+            <Link href="/" className="transition hover:text-white">
+              Back to landing
+            </Link>
+            <span>•</span>
+            <Link href="/docs" className="transition hover:text-white">
+              Documentation
+            </Link>
+            <span>•</span>
+            <Link href="/login" className="transition hover:text-white">
+              Sign in
+            </Link>
+          </div>
 
           <div className="pt-8">
             <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Terms of Service</h1>

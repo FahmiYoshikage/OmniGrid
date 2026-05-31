@@ -56,7 +56,7 @@ export default async function RootLayout({
       lang="en"
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col overflow-hidden">
+      <body className="min-h-full flex flex-col">
         <TooltipProvider delay={150}>
           <AppShell user={user}>{children}</AppShell>
           <Toaster richColors position="top-right" />

@@ -1766,6 +1766,53 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 
 - User ingin monitoring uptime seperti Dozzle: lihat status semua machine Tailscale, lalu listing seluruh container, namun tetap mempertahankan kemampuan tambah monitor di luar Tailscale.
 
+## Update Checkpoint 2026-05-31 (Session 12) — Docs Landing + Legal Page Fixes
+
+### 51. Landing Page Docs Expansion
+
+**File edit:**
+
+- `src/app/landing-page.tsx`
+
+**Perubahan:**
+
+- Menambahkan CTA dokumentasi, section docs, dan one-liner bootstrap OmniGrid.
+- Menambahkan link Docs di navbar dan footer landing.
+
+### 52. New Docs Page
+
+**File baru:**
+
+- `src/app/docs/page.tsx`
+
+**Perubahan:**
+
+- Halaman dokumentasi berisi bootstrap, auth setup, dan workflow Cloudflare Tunnel.
+- Menyertakan command bootstrap dari GitHub Gist.
+
+### 53. Terms & Privacy Scroll + Back Link
+
+**File edit:**
+
+- `src/app/terms/page.tsx`
+- `src/app/privacy-policy/page.tsx`
+- `src/app/layout.tsx`
+
+**Perubahan:**
+
+- Menghapus `overflow-hidden` di body agar halaman legal dapat scroll penuh.
+- Menambahkan link back ke landing dan docs di header area.
+
+### 54. README Bootstrap Command
+
+**File edit:**
+
+- `README.md`
+
+**Perubahan:**
+
+- Menambahkan satu baris bootstrap OmniGrid via GitHub Gist.
+
 ## Update Checkpoint 2026-05-31 (Session 11) — Production Compose & Dockerfile Alignment
 
 ### 47. Production Compose Template Adoption

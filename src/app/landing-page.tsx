@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, KeyRound, Network, ShieldCheck, TerminalSquare, Zap } from "lucide-react";
+import { ArrowRight, FileText, KeyRound, Network, ShieldCheck, TerminalSquare, Zap } from "lucide-react";
 import { LandingSessionGuard } from "./landing-session-guard";
 
 const FEATURES = [
@@ -42,12 +42,20 @@ export function LandingPage() {
               <div className="text-xs text-cyan-100/60">Zero Trust server operations</div>
             </div>
           </div>
-          <Link
-            href="/login"
-            className="rounded-2xl bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-          >
-            Sign in
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/docs"
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+            >
+              Docs
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-2xl bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+            >
+              Sign in
+            </Link>
+          </div>
         </nav>
 
         <div className="grid flex-1 items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr]">
@@ -120,7 +128,50 @@ export function LandingPage() {
           })}
         </div>
 
+        <section className="grid gap-6 pb-14 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-slate-200">
+              <FileText className="h-4 w-4 text-cyan-200" /> OmniGrid Docs
+            </div>
+            <h2 className="text-3xl font-black tracking-tight">Full operator docs are now live.</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              Learn the OmniGrid Network Architecture standard, workspace-scoped integrations, and Zero Trust deployment flows.
+              Everything from first boot to Cloudflare Tunnel publishing is covered in one place.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/docs"
+                className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+              >
+                Open documentation <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/docs#bootstrap"
+                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+              >
+                Bootstrap a node
+              </Link>
+            </div>
+          </div>
+          <div className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-cyan-950/40">
+            <div className="text-xs uppercase tracking-[0.3em] text-slate-500">One-line bootstrap</div>
+            <p className="mt-2 text-sm text-slate-300">
+              Turn any Linux host into the OmniGrid Network Architecture standard in seconds.
+            </p>
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-4 font-mono text-xs text-cyan-100">
+              curl -fsSL https://gist.githubusercontent.com/FahmiYoshikage/38fbbbfe4ab544bb16e9844efec64e51/raw/ce59bb410f50f0f13096068de5d77695c1f4b077/omnigrid-bootstrap.sh | sudo bash
+            </div>
+            <p className="mt-3 text-xs text-slate-400">
+              This script installs Docker, joins omnigrid-net, and prepares the host for managed workloads.
+            </p>
+          </div>
+        </section>
+
         <div className="flex flex-wrap items-center justify-center gap-3 pb-4 text-xs text-slate-500">
+          <Link href="/docs" className="transition hover:text-white">
+            Documentation
+          </Link>
+          <span>•</span>
           <Link href="/privacy-policy" className="transition hover:text-white">
             Privacy Policy
           </Link>

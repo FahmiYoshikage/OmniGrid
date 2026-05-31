@@ -205,6 +205,14 @@ Typical deployment model:
 
 For Cloudflare Tunnel deployments, OmniGrid Network Architecture can now help you inspect and manage published hostname mappings directly from the UI.
 
+## OmniGrid bootstrap (one-line)
+
+Use this script to standardize a Linux host into the OmniGrid Network Architecture baseline (Docker + omnigrid-net).
+
+```bash
+curl -fsSL https://gist.githubusercontent.com/FahmiYoshikage/38fbbbfe4ab544bb16e9844efec64e51/raw/ce59bb410f50f0f13096068de5d77695c1f4b077/omnigrid-bootstrap.sh | sudo bash
+```
+
 ## Local development notes
 
 - the custom server entrypoint lives in `server/index.ts`
