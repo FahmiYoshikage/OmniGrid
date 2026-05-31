@@ -33,6 +33,45 @@ Tanggal: 2026-05-16
 - `npm run lint` masih gagal karena lint lama di banyak file yang tidak disentuh pada sesi ini, termasuk `src/app/api/uptime/discover/route.ts`, `src/app/auth/success/page.tsx`, `src/app/containers/containers-client.tsx`, `src/app/credentials/page.tsx`, `src/app/nodes/page.tsx`, `src/app/settings/settings-client.tsx`, `src/app/terminal/terminal-pane.tsx`, `src/app/terminal/terminal-workspace.tsx`, `src/app/tunnels/tunnels-client.tsx`, `src/app/uptime/uptime-client.tsx`, dan `src/components/app-shell.tsx`.
 - Dev server sudah ada berjalan di `http://localhost:3000` dengan PID 19, sehingga server baru tidak distart ulang.
 
+## Update Checkpoint 2026-05-31 (Session 13) — Product Documentation Rewrite
+
+### 58. Stripe-like Educational Docs Pass
+
+**File edit:**
+
+- `src/app/docs/page.tsx`
+
+**Perubahan:**
+
+- Merombak `/docs` dari overview pendek menjadi dokumentasi edukatif yang mengajari konsep OmniGrid.
+- Menambahkan struktur docs dengan sidebar anchor:
+    - Start here
+    - Mental model
+    - Core terms
+    - Quickstart
+    - Architecture
+    - Feature guides
+    - Security model
+    - Production notes
+- Menambahkan glossary istilah in-app:
+    - Workspace
+    - Node
+    - omnigrid-net
+    - Credential profile
+    - Control plane
+    - Tunnel
+    - Topology
+    - Monitor
+- Menambahkan quickstart lebih instruksional dari setup control plane, bootstrap node, register node, sampai operate fleet.
+- Menambahkan feature guide untuk Terminal, Containers, Cloudflare Tunnel, dan Uptime agar user belajar kapan memakai setiap bagian dashboard.
+- Menegaskan model security SaaS: platform env untuk secret milik platform, encrypted workspace settings untuk secret milik user/customer.
+- Reuse `CopyCommandButton` pada quickstart bootstrap command.
+
+**Verifikasi:**
+
+- `npm run build` berhasil.
+- `npm run lint` masih gagal karena lint lama di file lain yang tidak disentuh; `src/app/docs/page.tsx` tidak muncul sebagai sumber error.
+
 ## Ringkasan Objective
 
 OmniGrid dibangun sebagai homelab command center berbasis Next.js untuk mengelola node, visualisasi Tailscale topology, web SSH terminal, audit log, proxy manager, uptime, runbooks, Wake-on-LAN, dan fleet control.
