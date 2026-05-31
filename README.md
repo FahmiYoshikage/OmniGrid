@@ -48,16 +48,16 @@ The current platform already supports:
 
 ## Platform architecture
 
-| Layer | Choice |
-|---|---|
-| Frontend | Next.js 16 App Router · React 19 · TailwindCSS v4 · shadcn/ui primitives |
-| Backend | Node.js custom server + Next.js route handlers |
-| Realtime | Socket.IO + xterm.js |
-| SSH | `ssh2` with local agent / key fallback |
-| Storage | SQLite via `better-sqlite3` |
-| Crypto | AES-256-GCM secret vault |
-| Auth | GitHub OAuth · Google OAuth · Gmail-delivered magic links |
-| Tunnel / Edge | Cloudflare Zero Trust API + Cloudflare Tunnel |
+| Layer         | Choice                                                                   |
+| ------------- | ------------------------------------------------------------------------ |
+| Frontend      | Next.js 16 App Router · React 19 · TailwindCSS v4 · shadcn/ui primitives |
+| Backend       | Node.js custom server + Next.js route handlers                           |
+| Realtime      | Socket.IO + xterm.js                                                     |
+| SSH           | `ssh2` with local agent / key fallback                                   |
+| Storage       | SQLite via `better-sqlite3`                                              |
+| Crypto        | AES-256-GCM secret vault                                                 |
+| Auth          | GitHub OAuth · Google OAuth · Gmail-delivered magic links                |
+| Tunnel / Edge | Cloudflare Zero Trust API + Cloudflare Tunnel                            |
 
 ## Security posture
 
