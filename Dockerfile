@@ -25,7 +25,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Next.js collects telemetry by default – disable in CI/Docker
+# Turbopack struggles with ssh2 native assets in production builds.
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_DISABLE_TURBOPACK=1
 
 RUN npm run build
 

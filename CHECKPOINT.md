@@ -1795,3 +1795,18 @@ Status: stabil. Build passed. Uptime monitoring system aktif dengan background c
 **Alasan:**
 
 - Menyamakan deployment Docker dengan standar OmniGrid (external `omnigrid-net`, .env.production), sambil memastikan server TS tetap jalan di production container.
+
+### 49. Docker Build Fix (ssh2 + Turbopack)
+
+**File edit:**
+
+- `Dockerfile`
+
+**Perubahan:**
+
+- Menonaktifkan Turbopack saat `npm run build` di Docker karena `ssh2` memicu error asset non-ESM pada build production.
+- Build tetap menggunakan `next build` biasa, hanya dialihkan dari Turbopack ke webpack saat build di container.
+
+**Alasan:**
+
+- `ssh2` adalah dependensi native untuk API route `/api/uptime/discover`; Turbopack gagal menangani asset non-ESM sehingga build Docker gagal. Menonaktifkan Turbopack membuat build stabil.
