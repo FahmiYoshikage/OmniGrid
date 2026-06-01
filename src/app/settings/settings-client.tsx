@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Cloud, KeyRound, Mail, RefreshCw, Save, Send, ShieldCheck } from "lucide-react";
+import { Cloud, KeyRound, Mail, RefreshCw, Save, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,14 +34,31 @@ interface AuthMethodSummary {
   createdAt: number;
 }
 
+interface AccountProfile {
+  username: string;
+  displayName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+}
+
 export function SettingsClient({
+  initialUser,
   sessionEmail,
   initialAuthAvailability,
 }: {
+  initialUser: AccountProfile;
   sessionEmail: string;
   initialAuthAvailability: AuthAvailability;
 }) {
   const searchParams = useSearchParams();
+
+  const [account, setAccount] = useState<AccountProfile>(initialUser);
+  const [username, setUsername] = useState(initialUser.username);
+  const [displayName, setDisplayName] = useState(initialUser.displayName ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(initialUser.avatarUrl ?? "");
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Tailscale state
   const [tsSettings, setTsSettings] = useState<TailscaleSettings>({ tailnet: "", hasApiKey: false, updatedAt: null });
@@ -205,10 +222,122 @@ export function SettingsClient({
     }
   }
 
+  async function saveAccount() {
+    setAccountSaving(true);
+    try {
+      const res = await fetch("/api/account", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, displayName, avatarUrl }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { user?: AccountProfile; error?: string };
+      if (!res.ok || !data.user) throw new Error(data.error || "Failed to update account");
+      setAccount(data.user);
+      setUsername(data.user.username);
+      setDisplayName(data.user.displayName ?? "");
+      setAvatarUrl(data.user.avatarUrl ?? "");
+      toast.success("Account profile updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update account");
+    } finally {
+      setAccountSaving(false);
+    }
+  }
+
+  async function deleteAccount() {
+    if (deleteConfirm !== account.username) {
+      toast.error("Type your username exactly before deleting this account.");
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      const res = await fetch("/api/account", { method: "DELETE" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error || "Failed to delete account");
+      toast.success("Account deleted");
+      window.location.href = "/";
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete account");
+      setDeletingAccount(false);
+    }
+  }
+
   const linkedProviders = new Set(authMethods.map((method) => method.provider));
 
   return (
     <div className="space-y-6 p-8">
+      <Card className="border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
+        <CardHeader className="flex-row items-center justify-between gap-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserRound className="h-4 w-4 text-lime-200" />
+            Account profile
+          </CardTitle>
+          <Badge variant="secondary">{account.email || `@${account.username}`}</Badge>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex flex-col gap-5 lg:flex-row">
+            <div className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 lg:w-80">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={displayName || username} className="h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10" />
+              ) : (
+                <div className="grid h-16 w-16 place-items-center rounded-2xl bg-lime-300/15 text-xl font-black text-lime-100">
+                  {(displayName || username).charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="truncate font-semibold text-white">{displayName || username}</div>
+                <div className="truncate text-sm text-muted-foreground">@{username}</div>
+                {account.email ? <div className="truncate text-xs text-muted-foreground">{account.email}</div> : null}
+              </div>
+            </div>
+            <div className="grid flex-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="accountUsername">Username</Label>
+                <Input
+                  id="accountUsername"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  disabled={accountSaving}
+                  placeholder="fahmi"
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Lowercase letters, numbers, dots, underscores, and hyphens are supported.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="accountDisplayName">Full name</Label>
+                <Input
+                  id="accountDisplayName"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  disabled={accountSaving}
+                  placeholder="Fahmi Yoshikage"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="accountAvatarUrl">Profile picture URL</Label>
+                <Input
+                  id="accountAvatarUrl"
+                  value={avatarUrl}
+                  onChange={(event) => setAvatarUrl(event.target.value)}
+                  disabled={accountSaving}
+                  placeholder="https://example.com/avatar.png"
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  OAuth avatars are used by default. Set a URL here when you want to override the profile picture shown in OmniGrid.
+                </p>
+              </div>
+            </div>
+          </div>
+          <Button onClick={saveAccount} disabled={accountSaving || !username.trim()}>
+            {accountSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save account
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
         <CardHeader className="flex-row items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -457,6 +586,40 @@ export function SettingsClient({
               Refresh
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-400/20 bg-red-500/10 shadow-2xl shadow-black/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base text-red-100">
+            <Trash2 className="h-4 w-4" />
+            Delete account
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="max-w-3xl text-sm leading-6 text-red-100/80">
+            Deleting your account removes the user record, sessions, linked GitHub/Google/email identities, workspaces, encrypted integration settings, credentials, nodes, and workspace-owned monitoring data. After deletion, the same GitHub or Google identity can create a new OmniGrid account again.
+          </p>
+          <div className="max-w-md space-y-2">
+            <Label htmlFor="deleteConfirm" className="text-red-100">
+              Type {account.username} to confirm
+            </Label>
+            <Input
+              id="deleteConfirm"
+              value={deleteConfirm}
+              onChange={(event) => setDeleteConfirm(event.target.value)}
+              disabled={deletingAccount}
+              className="border-red-300/20 bg-black/20"
+            />
+          </div>
+          <Button
+            variant="destructive"
+            onClick={deleteAccount}
+            disabled={deletingAccount || deleteConfirm !== account.username}
+          >
+            {deletingAccount ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+            Delete my account
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -48,6 +48,23 @@ function sanitizeUsername(input?: string | null) {
   return value || null;
 }
 
+function normalizeDisplayName(input?: string | null) {
+  const value = input?.trim();
+  return value ? value.slice(0, 80) : null;
+}
+
+function normalizeAvatarUrl(input?: string | null) {
+  const value = input?.trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.toString().slice(0, 500);
+  } catch {
+    return null;
+  }
+}
+
 function usernameFromProfile(profile: IdentityProfile) {
   return (
     sanitizeUsername(profile.username) ??
@@ -130,11 +147,6 @@ function syncUserProfile(userId: string, profile: IdentityProfile) {
   const existingUser = getUser(userId);
   if (!existingUser) throw new Error("User not found.");
 
-  const nextUsername =
-    profile.provider === "github" && sanitizeUsername(profile.username)
-      ? sanitizeUsername(profile.username)!
-      : existingUser.username;
-
   getDb()
     .prepare(
       `UPDATE users
@@ -146,7 +158,7 @@ function syncUserProfile(userId: string, profile: IdentityProfile) {
        WHERE id = ?`
     )
     .run(
-      nextUsername,
+      existingUser.username,
       profile.displayName ?? existingUser.display_name,
       normalizeEmail(profile.email) ?? existingUser.email,
       profile.avatarUrl ?? existingUser.avatar_url,
@@ -169,6 +181,45 @@ export function listAuthMethods(userId: string): AuthMethodSummary[] {
      WHERE user_id = ?
      ORDER BY created_at ASC`
   ).all(userId) as AuthMethodSummary[];
+}
+
+export function updateUserProfile(
+  userId: string,
+  input: { username: string; displayName?: string | null; avatarUrl?: string | null },
+) {
+  const username = sanitizeUsername(input.username);
+  if (!username) {
+    throw new Error("Username must contain letters, numbers, dots, underscores, or hyphens.");
+  }
+
+  const db = getDb();
+  const existing = getUser(userId);
+  if (!existing) throw new Error("User not found.");
+
+  db.prepare(
+    `UPDATE users
+     SET username = ?,
+         display_name = ?,
+         avatar_url = ?,
+         updated_at = ?
+     WHERE id = ?`
+  ).run(
+    username,
+    normalizeDisplayName(input.displayName),
+    normalizeAvatarUrl(input.avatarUrl),
+    Date.now(),
+    userId,
+  );
+
+  return getUser(userId)!;
+}
+
+export function deleteUserAccount(userId: string) {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    db.prepare("DELETE FROM users WHERE id = ?").run(userId);
+  });
+  tx();
 }
 
 export function linkIdentityToUser(userId: string, profile: IdentityProfile) {

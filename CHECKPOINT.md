@@ -72,6 +72,56 @@ Tanggal: 2026-05-16
 - `npm run build` berhasil.
 - `npm run lint` masih gagal karena lint lama di file lain yang tidak disentuh; `src/app/docs/page.tsx` tidak muncul sebagai sumber error.
 
+## Update Checkpoint 2026-06-01 (Session 14) — Landing Access + Account Operations
+
+### 59. Public Landing Access for Authenticated Users
+
+**File edit:**
+
+- `src/app/page.tsx`
+- `src/app/landing-page.tsx`
+- `src/components/app-shell.tsx`
+
+**Perubahan:**
+
+- `/` sekarang selalu merender landing page walaupun user sudah login.
+- Menghapus redirect server-side dari `/` ke `/dashboard`.
+- Melepas `LandingSessionGuard` dari landing agar tidak ada redirect client-side untuk session aktif.
+- `AppShell` sekarang memperlakukan public routes sebagai halaman polos, sehingga landing tidak dibungkus sidebar dashboard saat user sudah login.
+- `/login` tetap memakai perilaku lama yang benar: jika session masih aktif, server langsung redirect ke `/dashboard` tanpa menampilkan metode login.
+
+### 60. Account Profile Update + Delete Account
+
+**File baru:**
+
+- `src/app/api/account/route.ts`
+
+**File edit:**
+
+- `src/app/settings/page.tsx`
+- `src/app/settings/settings-client.tsx`
+- `src/lib/auth/accounts.ts`
+
+**Perubahan:**
+
+- Menambahkan API account:
+    - `GET /api/account` untuk membaca profil session saat ini.
+    - `PUT /api/account` untuk update username, full name/display name, dan profile picture URL.
+    - `DELETE /api/account` untuk menghapus akun user saat ini.
+- Settings sekarang memiliki kartu `Account profile` untuk mengubah:
+    - username
+    - full name
+    - profile picture URL
+- Settings sekarang memiliki danger zone `Delete account` dengan konfirmasi username.
+- Delete account menghapus row `users`; karena foreign key cascade aktif, session, linked identities GitHub/Google/email, workspace, integration settings, credentials, nodes, dan data workspace yang terkait ikut terhapus.
+- Setelah akun dihapus, identity OAuth lama tidak lagi ada di `auth_identities`, sehingga GitHub/Google yang sama bisa mendaftar ulang dan membuat akun OmniGrid baru.
+- OAuth sync tidak lagi menimpa username lokal pada login berikutnya, agar username yang diedit user tidak hilang saat profil GitHub tersinkron.
+
+**Verifikasi:**
+
+- `npm run build` berhasil.
+- `npm run lint` masih gagal karena lint lama di file lain dan pola lama di `settings-client.tsx`; perubahan ini tetap lolos TypeScript/build production.
+
 ## Ringkasan Objective
 
 OmniGrid dibangun sebagai homelab command center berbasis Next.js untuk mengelola node, visualisasi Tailscale topology, web SSH terminal, audit log, proxy manager, uptime, runbooks, Wake-on-LAN, dan fleet control.

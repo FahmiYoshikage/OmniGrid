@@ -113,7 +113,7 @@ export function AppShell({ children, user }: AppShellProps) {
         };
     }, [currentUser, publicRoute, sessionChecked]);
 
-    if (publicRoute && (pathname !== '/' || !currentUser)) {
+    if (publicRoute) {
         return <>{children}</>;
     }
 

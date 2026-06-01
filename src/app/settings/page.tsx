@@ -12,9 +12,18 @@ export default async function SettingsPage() {
     <div className="flex min-h-full flex-col">
       <PageHeader
         title="Settings"
-        description="Manage your workspace integrations — Tailscale, Cloudflare Zero Trust, and more."
+        description="Manage your account, login methods, and workspace integrations."
       />
-      <SettingsClient sessionEmail={user.email ?? ""} initialAuthAvailability={authAvailability} />
+      <SettingsClient
+        initialUser={{
+          username: user.username,
+          displayName: user.displayName,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+        }}
+        sessionEmail={user.email ?? ""}
+        initialAuthAvailability={authAvailability}
+      />
     </div>
   );
 }

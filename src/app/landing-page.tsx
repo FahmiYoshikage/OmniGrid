@@ -18,7 +18,6 @@ import {
     Workflow,
 } from 'lucide-react';
 import { CopyCommandButton } from './copy-command-button';
-import { LandingSessionGuard } from './landing-session-guard';
 
 const BRAND_NAME = 'OmniGrid Network Architecture';
 const BOOTSTRAP_CMD =
@@ -110,7 +109,6 @@ const CAPABILITIES = [
 export function LandingPage() {
     return (
         <main className="min-h-screen overflow-hidden bg-zinc-950 text-zinc-50">
-            <LandingSessionGuard />
             <section className="relative isolate min-h-screen overflow-hidden">
                 <NetworkBackdrop />
                 <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-5 sm:px-8 lg:px-10">
