@@ -2,12 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShieldCheck } from 'lucide-react';
+import { absoluteUrl } from '@/lib/seo';
 
 const BRAND_NAME = 'OmniGrid Network Architecture';
 
 export const metadata: Metadata = {
     title: `Privacy Policy | ${BRAND_NAME}`,
     description: `Privacy Policy for ${BRAND_NAME}, including how authentication data from Google OAuth, GitHub OAuth, and email sign-in is handled.`,
+    alternates: {
+        canonical: absoluteUrl('/privacy-policy'),
+    },
 };
 
 const sections = [

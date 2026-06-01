@@ -18,6 +18,7 @@ import {
     Workflow,
 } from 'lucide-react';
 import { CopyCommandButton } from './copy-command-button';
+import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
 
 const BRAND_NAME = 'OmniGrid Network Architecture';
 const BOOTSTRAP_CMD =
@@ -107,8 +108,31 @@ const CAPABILITIES = [
 ];
 
 export function LandingPage() {
+    const structuredData = {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: SITE_NAME,
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Web',
+        url: absoluteUrl('/'),
+        image: absoluteUrl('/logo.png'),
+        description: SITE_DESCRIPTION,
+        offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'USD',
+        },
+    };
+
     return (
         <main className="min-h-screen overflow-hidden bg-zinc-950 text-zinc-50">
+            <script
+                type="application/ld+json"
+                suppressHydrationWarning
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(structuredData),
+                }}
+            />
             <section className="relative isolate min-h-screen overflow-hidden">
                 <NetworkBackdrop />
                 <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-5 sm:px-8 lg:px-10">

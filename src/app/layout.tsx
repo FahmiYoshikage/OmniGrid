@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { getSessionUser } from '@/lib/auth/session';
+import { absoluteUrl, getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -18,9 +19,60 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: 'OmniGrid Network Architecture — Zero Trust Server Operations',
-    description:
-        'Zero Trust control plane for managing your network architecture, SSH operations, topology, Cloudflare exposure, and infrastructure workflows.',
+    metadataBase: new URL(getSiteUrl()),
+    applicationName: SITE_NAME,
+    title: {
+        default: `${SITE_NAME} - Zero Trust Server Operations`,
+        template: `%s | ${SITE_NAME}`,
+    },
+    description: SITE_DESCRIPTION,
+    keywords: [
+        'OmniGrid',
+        'Zero Trust server operations',
+        'homelab dashboard',
+        'SSH terminal',
+        'Tailscale topology',
+        'Cloudflare Tunnel',
+        'Docker workload discovery',
+        'private infrastructure',
+    ],
+    authors: [{ name: SITE_NAME }],
+    creator: SITE_NAME,
+    publisher: SITE_NAME,
+    openGraph: {
+        type: 'website',
+        locale: 'en_US',
+        url: absoluteUrl('/'),
+        siteName: SITE_NAME,
+        title: `${SITE_NAME} - Zero Trust Server Operations`,
+        description: SITE_DESCRIPTION,
+        images: [
+            {
+                url: absoluteUrl('/logo.png'),
+                width: 512,
+                height: 512,
+                alt: SITE_NAME,
+            },
+        ],
+    },
+    twitter: {
+        card: 'summary',
+        title: `${SITE_NAME} - Zero Trust Server Operations`,
+        description: SITE_DESCRIPTION,
+        images: [absoluteUrl('/logo.png')],
+    },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            'max-image-preview': 'large',
+            'max-snippet': -1,
+            'max-video-preview': -1,
+        },
+    },
+    category: 'technology',
     icons: {
         icon: '/logo.png',
         apple: '/logo.png',

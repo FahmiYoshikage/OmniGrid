@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isPublicIndexablePath } from "@/lib/seo";
 
 /**
  * Cookie host alignment.
@@ -14,7 +15,12 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export function proxy(request: NextRequest) {
   const publicUrl = process.env.OMNIGRID_PUBLIC_URL;
-  if (!publicUrl) return NextResponse.next();
+  const response = NextResponse.next();
+  if (!isPublicIndexablePath(request.nextUrl.pathname)) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
+  if (!publicUrl) return response;
 
   let canonical: URL;
   try {
@@ -27,7 +33,7 @@ export function proxy(request: NextRequest) {
   if (!incomingHost) return NextResponse.next();
 
   const canonicalHost = canonical.host;
-  if (incomingHost === canonicalHost) return NextResponse.next();
+  if (incomingHost === canonicalHost) return response;
 
   const target = new URL(request.nextUrl.toString());
   target.protocol = canonical.protocol;

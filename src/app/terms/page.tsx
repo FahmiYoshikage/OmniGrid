@@ -2,12 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FileText } from 'lucide-react';
+import { absoluteUrl } from '@/lib/seo';
 
 const BRAND_NAME = 'OmniGrid Network Architecture';
 
 export const metadata: Metadata = {
     title: `Terms of Service | ${BRAND_NAME}`,
     description: `Terms of Service for ${BRAND_NAME}, the Zero Trust server operations platform.`,
+    alternates: {
+        canonical: absoluteUrl('/terms'),
+    },
 };
 
 const sections = [

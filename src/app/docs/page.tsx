@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import type { Metadata } from 'next';
 import {
     Activity,
     ArrowRight,
@@ -18,6 +19,7 @@ import {
     TerminalSquare,
 } from 'lucide-react';
 import { CopyCommandButton } from '../copy-command-button';
+import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
 
 const BRAND_NAME = 'OmniGrid Network Architecture';
 const BOOTSTRAP_CMD =
@@ -155,9 +157,47 @@ const FEATURE_GUIDES = [
     },
 ];
 
+export const metadata: Metadata = {
+    title: `Documentation - ${SITE_NAME}`,
+    description:
+        'Learn OmniGrid concepts, in-app terms, quickstart workflow, architecture baseline, security model, and feature guides for Zero Trust server operations.',
+    alternates: {
+        canonical: absoluteUrl('/docs'),
+    },
+    openGraph: {
+        title: `Documentation - ${SITE_NAME}`,
+        description: SITE_DESCRIPTION,
+        url: absoluteUrl('/docs'),
+    },
+};
+
 export default function DocsPage() {
+    const structuredData = {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        headline: `${SITE_NAME} documentation`,
+        description:
+            'Operator documentation for OmniGrid concepts, architecture, quickstart, security model, and feature guides.',
+        url: absoluteUrl('/docs'),
+        publisher: {
+            '@type': 'Organization',
+            name: SITE_NAME,
+            logo: {
+                '@type': 'ImageObject',
+                url: absoluteUrl('/logo.png'),
+            },
+        },
+    };
+
     return (
         <main className="min-h-screen bg-zinc-950 text-zinc-50">
+            <script
+                type="application/ld+json"
+                suppressHydrationWarning
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(structuredData),
+                }}
+            />
             <header className="border-b border-white/10 bg-zinc-950/95 px-5 py-4 backdrop-blur sm:px-8 lg:px-10">
                 <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
                     <Link href="/" className="flex min-w-0 items-center gap-3">
