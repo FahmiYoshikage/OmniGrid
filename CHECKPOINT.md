@@ -122,6 +122,67 @@ Tanggal: 2026-05-16
 - `npm run build` berhasil.
 - `npm run lint` masih gagal karena lint lama di file lain dan pola lama di `settings-client.tsx`; perubahan ini tetap lolos TypeScript/build production.
 
+## Update Checkpoint 2026-06-03 (Session 15) — SEO + Google Indexing Readiness
+
+### 61. Public SEO Metadata, Sitemap, and Robots Controls
+
+**File baru:**
+
+- `src/lib/seo.ts`
+- `src/app/sitemap.ts`
+- `src/app/robots.ts`
+
+**File edit:**
+
+- `src/app/layout.tsx`
+- `src/app/page.tsx`
+- `src/app/landing-page.tsx`
+- `src/app/docs/page.tsx`
+- `src/app/login/page.tsx`
+- `src/app/privacy-policy/page.tsx`
+- `src/app/terms/page.tsx`
+- `src/proxy.ts`
+
+**Perubahan:**
+
+- Menambahkan helper SEO terpusat untuk nama situs, deskripsi, canonical URL, dan daftar route publik yang boleh diindeks.
+- Menambahkan metadata global:
+    - `metadataBase`
+    - title template
+    - description
+    - keywords
+    - Open Graph
+    - Twitter card
+    - default robots metadata untuk halaman publik
+- Menambahkan canonical khusus untuk:
+    - `/`
+    - `/docs`
+    - `/privacy-policy`
+    - `/terms`
+- Menambahkan structured data JSON-LD:
+    - `SoftwareApplication` untuk landing page.
+    - `TechArticle` untuk docs.
+- Menambahkan `sitemap.xml` via `src/app/sitemap.ts`, hanya berisi halaman publik yang memang aman untuk indexing:
+    - `/`
+    - `/docs`
+    - `/privacy-policy`
+    - `/terms`
+- Menambahkan `robots.txt` via `src/app/robots.ts` dengan sitemap directive dan block untuk area aplikasi/auth/API.
+- Menambahkan metadata `noindex, nofollow` pada `/login`.
+- Menambahkan header `X-Robots-Tag: noindex, nofollow` pada `src/proxy.ts` untuk route non-publik agar dashboard, API, auth callback, settings, terminal, credentials, topology, tunnels, uptime, dan sejenisnya tidak dipromosikan ke search index.
+
+**Catatan keamanan SEO:**
+
+- Sitemap sengaja tidak memasukkan route aplikasi internal.
+- Route publik legal/docs/landing tetap indexable.
+- Route non-publik diberi guard header `X-Robots-Tag` selain tidak dimasukkan sitemap.
+- Tetap pastikan deployment memakai `OMNIGRID_PUBLIC_URL` production yang benar agar canonical URL, sitemap, dan robots memakai origin final.
+
+**Verifikasi:**
+
+- `npm run build` berhasil pada sesi implementasi SEO.
+- `npm run lint` masih gagal karena lint lama di file lain; perubahan SEO tetap lolos TypeScript/build production.
+
 ## Ringkasan Objective
 
 OmniGrid dibangun sebagai homelab command center berbasis Next.js untuk mengelola node, visualisasi Tailscale topology, web SSH terminal, audit log, proxy manager, uptime, runbooks, Wake-on-LAN, dan fleet control.
