@@ -94,11 +94,7 @@ export const credentialsRepo = {
       | undefined;
     if (!existing) return undefined;
     const now = Date.now();
-    prep<[string, CredentialKind, string, string | null, number, string]>(
-      `UPDATE credentials SET
-        label = ?, kind = ?, secret_enc = ?, passphrase_enc = ?, updated_at = ?
-      WHERE id = ?${workspaceId ? " AND workspace_id = ?" : ""}`,
-    ).run(
+    const params = [
       input.label,
       input.kind,
       input.secret ? encrypt(input.secret) : existing.secret_enc,
@@ -109,7 +105,14 @@ export const credentialsRepo = {
           : null,
       now,
       id,
-    );
+    ];
+    if (workspaceId) params.push(workspaceId);
+
+    prep(
+      `UPDATE credentials SET
+        label = ?, kind = ?, secret_enc = ?, passphrase_enc = ?, updated_at = ?
+      WHERE id = ?${workspaceId ? " AND workspace_id = ?" : ""}`,
+    ).run(...params);
     return this.get(id, workspaceId);
   },
 

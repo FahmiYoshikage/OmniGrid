@@ -183,6 +183,32 @@ Tanggal: 2026-05-16
 - `npm run build` berhasil pada sesi implementasi SEO.
 - `npm run lint` masih gagal karena lint lama di file lain; perubahan SEO tetap lolos TypeScript/build production.
 
+## Update Checkpoint 2026-06-04 (Session 16) — Credential Update Bugfix
+
+### 62. Fix Credential Profile Update in Workspace Scope
+
+**File edit:**
+
+- `src/lib/db/repos/credentials.ts`
+
+**Bug:**
+
+- Update credential profile di production gagal dengan:
+    - `RangeError: Too few parameter values were provided`
+    - stack dari `.next/server/app/api/credentials/[id]/route.js`
+- Penyebabnya ada di `credentialsRepo.update()`: SQL menambahkan `AND workspace_id = ?` saat `workspaceId` tersedia, tetapi parameter `.run()` tidak mengirim nilai `workspaceId`.
+
+**Perubahan:**
+
+- Mengubah `credentialsRepo.update()` agar menyusun array parameter seperti `nodesRepo.update()`.
+- Jika `workspaceId` aktif, parameter `workspaceId` sekarang ikut di-push sebelum `.run(...params)`.
+- Update credential tetap mempertahankan secret/passphrase lama saat field tidak dikirim.
+
+**Verifikasi:**
+
+- `npm run build` berhasil.
+- Build masih menampilkan warning Turbopack lama dari import trace `src/app/api/uptime/discover/route.ts` dan `src/lib/ssh/manager.ts`; tidak terkait bug credential update.
+
 ## Ringkasan Objective
 
 OmniGrid dibangun sebagai homelab command center berbasis Next.js untuk mengelola node, visualisasi Tailscale topology, web SSH terminal, audit log, proxy manager, uptime, runbooks, Wake-on-LAN, dan fleet control.
