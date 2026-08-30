@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
 import { createCloudflarePublishedHostname } from "@/lib/cloudflare/client";
+import { protectMutation } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -13,8 +14,10 @@ const CreatePublishedAppSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("cloudflare.manage");
   if (response) return response;
+  const securityResponse = protectMutation(req, "cloudflare-published-apps", { userId: user.id });
+  if (securityResponse) return securityResponse;
 
   const body = await req.json().catch(() => null);
   const parsed = CreatePublishedAppSchema.safeParse(body);

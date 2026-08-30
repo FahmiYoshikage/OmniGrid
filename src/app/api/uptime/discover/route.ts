@@ -1,28 +1,30 @@
 import { NextResponse } from 'next/server';
-import { requireApiSession } from '@/lib/auth/api';
+import { requireApiPermission } from '@/lib/auth/api';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { Client } from 'ssh2';
-import { nodesRepo } from '@/lib/db/repos/nodes';
+import { nodesRepo, type NodeRow } from '@/lib/db/repos/nodes';
 import { buildAuth } from '@/lib/ssh/manager';
+import { createHostVerifier } from '@/lib/ssh/host-verifier';
 
 export const runtime = 'nodejs';
 
 const execAsync = promisify(exec);
 
-async function execSsh(node: any, command: string): Promise<string> {
+async function execSsh(node: NodeRow, command: string, workspaceId: string, actor: string): Promise<string> {
     return new Promise((resolve, reject) => {
         const client = new Client();
         let stdout = '';
 
         let auth;
         try {
-            auth = buildAuth(node);
+            auth = buildAuth(node, workspaceId);
         } catch (e) {
             return reject(e);
         }
 
-        const { methodLabel, ...connectAuth } = auth;
+        const { methodLabel: _methodLabel, ...connectAuth } = auth;
+        void _methodLabel;
 
         client.on('ready', () => {
             client.exec(command, (err, stream) => {
@@ -48,6 +50,8 @@ async function execSsh(node: any, command: string): Promise<string> {
         client.connect({
             host: node.hostname,
             port: node.ssh_port,
+            hostHash: 'sha256',
+            hostVerifier: createHostVerifier(workspaceId, node.id, actor),
             readyTimeout: 10000,
             ...connectAuth,
         });
@@ -55,10 +59,10 @@ async function execSsh(node: any, command: string): Promise<string> {
 }
 
 export async function GET() {
-    const { user, response } = await requireApiSession();
+    const { user, response } = await requireApiPermission("containers.manage");
     if (response) return response;
 
-    const allContainers: any[] = [];
+    const allContainers: unknown[] = [];
 
     // 1. Scan Local Host
     try {
@@ -68,10 +72,10 @@ export async function GET() {
         );
         const localContainers = parseDockerOutput(stdout, 'Local Server');
         allContainers.push(...localContainers);
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error(
             '[uptime] docker discover local failed (ignoring):',
-            err.message
+            err instanceof Error ? err.message : String(err)
         );
     }
 
@@ -79,22 +83,24 @@ export async function GET() {
     let nodes: ReturnType<typeof nodesRepo.list> = [];
     try {
         nodes = nodesRepo.list(user.workspaceId);
-    } catch (err: any) {
-        console.error('[uptime] failed to list nodes:', err.message);
+    } catch (err: unknown) {
+        console.error('[uptime] failed to list nodes:', err instanceof Error ? err.message : String(err));
     }
 
     const scanPromises = nodes.map(async (node) => {
         try {
             const stdout = await execSsh(
                 node,
-                `docker ps --filter network=omnigrid-net --format '{{json .}}'`
+                `docker ps --filter network=omnigrid-net --format '{{json .}}'`,
+                user.workspaceId,
+                user.username,
             );
             const nodeContainers = parseDockerOutput(stdout, node.name);
             allContainers.push(...nodeContainers);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(
                 `[uptime] docker discover on node ${node.name} failed (ignoring):`,
-                err.message
+                err instanceof Error ? err.message : String(err)
             );
         }
     });

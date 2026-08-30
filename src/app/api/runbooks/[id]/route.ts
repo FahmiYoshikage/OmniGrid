@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
 import { auditRepo } from "@/lib/db/repos/audit";
 import { runbooksRepo } from "@/lib/db/repos/runbooks";
+import { protectMutation } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("runbooks.read");
   if (response) return response;
   const { id } = await context.params;
   const runbook = runbooksRepo.get(id, user.workspaceId);
@@ -29,8 +30,10 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("runbooks.manage");
   if (response) return response;
+  const securityResponse = protectMutation(request, "runbooks", { userId: user.id });
+  if (securityResponse) return securityResponse;
   const { id } = await context.params;
 
   const body = await request.json().catch(() => null);
@@ -56,11 +59,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("runbooks.manage");
   if (response) return response;
+  const securityResponse = protectMutation(request, "runbooks", { userId: user.id, limit: 30 });
+  if (securityResponse) return securityResponse;
   const { id } = await context.params;
   const runbook = runbooksRepo.get(id, user.workspaceId);
   if (!runbook) return NextResponse.json({ error: "Not found" }, { status: 404 });

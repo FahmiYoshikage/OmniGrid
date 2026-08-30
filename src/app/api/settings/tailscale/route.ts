@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
 import { integrationSettingsRepo } from "@/lib/db/repos/integration-settings";
 import { clearTailnetCache } from "@/lib/tailscale/client";
+import { protectMutation } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -13,14 +14,16 @@ const TailscaleSettingsSchema = z.object({
 });
 
 export async function GET() {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("workspace.read");
   if (response) return response;
   return NextResponse.json({ settings: integrationSettingsRepo.getTailscalePublic(user.workspaceId) });
 }
 
 export async function PUT(req: Request) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("integrations.manage");
   if (response) return response;
+  const securityResponse = protectMutation(req, "settings-tailscale", { userId: user.id });
+  if (securityResponse) return securityResponse;
   const body = await req.json().catch(() => null);
   const parsed = TailscaleSettingsSchema.safeParse(body);
   if (!parsed.success) {

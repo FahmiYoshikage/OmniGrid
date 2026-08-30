@@ -1,6 +1,5 @@
 import { integrationSettingsRepo } from "@/lib/db/repos/integration-settings";
 import type {
-  CloudflareAccessAppSummary,
   CloudflareOverview,
   CloudflarePublishedHostnameResult,
   CloudflareTunnelSummary,

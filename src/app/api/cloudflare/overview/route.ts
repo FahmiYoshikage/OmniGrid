@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
 import { getCloudflareOverview } from "@/lib/cloudflare/client";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("workspace.read");
   if (response) return response;
 
   try {

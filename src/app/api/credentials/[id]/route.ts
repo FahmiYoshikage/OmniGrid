@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { credentialsRepo } from "@/lib/db/repos/credentials";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
+import { protectMutation } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const CredentialUpdateSchema = z.object({
 });
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("credentials.manage");
   if (response) return response;
   const { id } = await ctx.params;
   const credential = credentialsRepo.get(id, user.workspaceId);
@@ -22,8 +23,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 }
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("credentials.manage");
   if (response) return response;
+  const securityResponse = protectMutation(req, "credentials", { userId: user.id });
+  if (securityResponse) return securityResponse;
   const { id } = await ctx.params;
   const body = await req.json().catch(() => null);
   const parsed = CredentialUpdateSchema.safeParse(body);
@@ -36,8 +39,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("credentials.read");
   if (response) return response;
+  const securityResponse = protectMutation(_req, "credentials", { userId: user.id, limit: 30 });
+  if (securityResponse) return securityResponse;
   const { id } = await ctx.params;
   const credential = credentialsRepo.get(id, user.workspaceId);
   if (!credential) return NextResponse.json({ error: "Not found" }, { status: 404 });

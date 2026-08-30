@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   ReactFlow,
   Background,
@@ -157,6 +158,8 @@ function DetailPanel({
   device: TailscaleDevice;
   onClose: () => void;
 }) {
+  const router = useRouter();
+
   return (
     <div className="absolute right-4 top-4 z-10 w-80">
       <Card className="border-zinc-800 bg-zinc-900/95 backdrop-blur">
@@ -201,7 +204,7 @@ function DetailPanel({
               size="sm"
               className="flex-1"
               onClick={() => {
-                window.location.href = "/terminal";
+                 router.push("/terminal");
               }}
             >
               <Terminal className="h-4 w-4" /> Open terminal

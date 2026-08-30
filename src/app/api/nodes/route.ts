@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { nodesRepo } from "@/lib/db/repos/nodes";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
+import { MacAddressSchema, WolBroadcastSchema } from "@/lib/wol";
+import { protectMutation } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -15,20 +17,22 @@ const NodeInputSchema = z.object({
   ssh_port: z.number().int().min(1).max(65535).optional(),
   ssh_mode: z.enum(["tailscale", "key", "password"]).optional(),
   credential_id: z.string().nullish(),
-  mac_address: z.string().nullish(),
-  wol_broadcast: z.string().nullish(),
+  mac_address: MacAddressSchema,
+  wol_broadcast: WolBroadcastSchema,
   notes: z.string().nullish(),
 });
 
 export async function GET() {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("nodes.read");
   if (response) return response;
   return NextResponse.json({ nodes: nodesRepo.list(user.workspaceId) });
 }
 
 export async function POST(req: Request) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("nodes.manage");
   if (response) return response;
+  const securityResponse = protectMutation(req, "nodes", { userId: user.id });
+  if (securityResponse) return securityResponse;
   const body = await req.json().catch(() => null);
   const parsed = NodeInputSchema.safeParse(body);
   if (!parsed.success) {

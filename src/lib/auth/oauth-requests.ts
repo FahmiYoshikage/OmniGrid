@@ -61,7 +61,7 @@ export async function consumeOAuthRequest(provider: OAuthProvider, state: string
   db.prepare("DELETE FROM auth_oauth_requests WHERE expires_at <= ?").run(Date.now());
 
   if (!row) return null;
-  if (cookieState && cookieState !== state) return null;
+  if (!cookieState || cookieState !== state) return null;
 
   return {
     state: row.state,

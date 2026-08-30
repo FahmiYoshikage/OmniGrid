@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getTailnet } from "@/lib/tailscale/client";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("workspace.read");
   if (response) return response;
   const url = new URL(req.url);
   const force = url.searchParams.get("force") === "1";

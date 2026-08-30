@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { uptimeRepo } from "@/lib/db/repos/uptime";
-import { requireApiSession } from "@/lib/auth/api";
+import { requireApiPermission } from "@/lib/auth/api";
+import { protectMutation } from "@/lib/security/request";
+import { validateMonitorTarget } from "@/lib/uptime/validation";
 
 export const runtime = "nodejs";
 
@@ -13,15 +15,15 @@ const MonitorInputSchema = z.object({
   timeout_ms: z.number().int().min(1000).max(60000).optional(),
   method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]).optional(),
   expected_status: z.number().int().min(100).max(599).nullable().optional(),
-  headers_json: z.string().nullable().optional(),
-  body: z.string().nullable().optional(),
+  headers_json: z.string().max(512 * 1024).nullable().optional(),
+  body: z.string().max(1024 * 1024).nullable().optional(),
   enabled: z.boolean().optional(),
   notify: z.boolean().optional(),
 });
 
 /** GET /api/uptime/monitors — list all monitors with stats for the workspace */
 export async function GET() {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("uptime.read");
   if (response) return response;
 
   const stats = uptimeRepo.getWorkspaceStats(user.workspaceId);
@@ -32,8 +34,10 @@ export async function GET() {
 
 /** POST /api/uptime/monitors — create a new monitor */
 export async function POST(req: Request) {
-  const { user, response } = await requireApiSession();
+  const { user, response } = await requireApiPermission("uptime.manage");
   if (response) return response;
+  const securityResponse = protectMutation(req, "uptime-monitors", { userId: user.id });
+  if (securityResponse) return securityResponse;
 
   const body = await req.json().catch(() => null);
   const parsed = MonitorInputSchema.safeParse(body);
@@ -44,20 +48,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Validate target format based on kind
   const { kind, target } = parsed.data;
-  if (kind === "http" && !target.startsWith("http://") && !target.startsWith("https://")) {
-    return NextResponse.json(
-      { error: "HTTP monitors require a URL starting with http:// or https://" },
-      { status: 400 },
-    );
-  }
-  if (kind === "tcp" && !target.includes(":")) {
-    return NextResponse.json(
-      { error: "TCP monitors require host:port format (e.g. example.com:443)" },
-      { status: 400 },
-    );
-  }
+  try { await validateMonitorTarget(kind, target); }
+  catch { return NextResponse.json({ error: "Invalid or unsafe monitor target" }, { status: 400 }); }
 
   try {
     const monitor = uptimeRepo.createMonitor(parsed.data, user.workspaceId);
