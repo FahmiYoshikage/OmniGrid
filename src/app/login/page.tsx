@@ -19,13 +19,14 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; invite?: string }>;
 }) {
   const user = await getSessionUser();
   if (user) redirect("/dashboard");
 
   const params = await searchParams;
   const error = params.error;
+  const invite = params.invite;
   const availability = getAuthAvailability();
 
   return (
@@ -83,7 +84,7 @@ export default async function LoginPage({
               </div>
             )}
 
-            <LoginMethods availability={availability} />
+            <LoginMethods availability={availability} invitationToken={invite} />
 
             <p className="mt-6 text-center text-xs text-muted-foreground/60">
               By signing in, you allow OmniGrid to verify your identity through the login methods you choose.

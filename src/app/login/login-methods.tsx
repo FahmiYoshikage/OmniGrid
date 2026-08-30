@@ -7,16 +7,21 @@ import type { AuthAvailability } from "@/lib/auth/availability";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function LoginMethods({ availability }: { availability: AuthAvailability }) {
+export function LoginMethods({ availability, invitationToken }: { availability: AuthAvailability; invitationToken?: string }) {
   const [loadingProvider, setLoadingProvider] = useState<"github" | "google" | null>(null);
   const [email, setEmail] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState<string | null>(null);
 
+  function rememberInvitation() {
+    if (invitationToken) window.sessionStorage.setItem("omnigrid_pending_invitation", invitationToken);
+  }
+
   async function requestEmailLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSendingEmail(true);
     setEmailSent(null);
+    rememberInvitation();
 
     try {
       const res = await fetch("/api/auth/email/request", {
@@ -43,7 +48,7 @@ export function LoginMethods({ availability }: { availability: AuthAvailability 
         <OAuthButton
           href="/api/auth/github"
           loading={loadingProvider === "github"}
-          onClick={() => setLoadingProvider("github")}
+          onClick={() => { rememberInvitation(); setLoadingProvider("github"); }}
           idleLabel="Sign in with GitHub"
           loadingLabel="Redirecting to GitHub..."
           icon={<GitHubIcon className="h-5 w-5" />}
@@ -55,7 +60,7 @@ export function LoginMethods({ availability }: { availability: AuthAvailability 
         <OAuthButton
           href="/api/auth/google"
           loading={loadingProvider === "google"}
-          onClick={() => setLoadingProvider("google")}
+          onClick={() => { rememberInvitation(); setLoadingProvider("google"); }}
           idleLabel="Sign in with Google"
           loadingLabel="Redirecting to Google..."
           icon={<GoogleIcon className="h-5 w-5" />}

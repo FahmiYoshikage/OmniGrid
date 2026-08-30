@@ -3,8 +3,10 @@ import { getDb } from "@/lib/db/client";
 import { randomBytes } from "node:crypto";
 import { decrypt, encrypt, sha256Hex } from "@/lib/crypto";
 import { workspacesRepo } from "@/lib/db/repos/workspaces";
+import type { WorkspaceRole } from "./permissions";
 
-const SESSION_COOKIE = "omnigrid_session";
+export const SESSION_COOKIE = "omnigrid_session";
+export const ACTIVE_WORKSPACE_COOKIE = "omnigrid_workspace";
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export interface SessionUser {
@@ -14,6 +16,111 @@ export interface SessionUser {
   email: string | null;
   avatarUrl: string | null;
   workspaceId: string;
+  role: WorkspaceRole;
+}
+
+function parseCookieHeader(cookieHeader: string | undefined): Map<string, string> {
+  const result = new Map<string, string>();
+  if (!cookieHeader) return result;
+
+  for (const part of cookieHeader.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0) continue;
+    const name = part.slice(0, separator).trim();
+    const rawValue = part.slice(separator + 1).trim();
+    if (!name) continue;
+    try {
+      result.set(name, decodeURIComponent(rawValue));
+    } catch {
+      result.set(name, rawValue);
+    }
+  }
+  return result;
+}
+
+/** Resolve a session from its encrypted cookie value without depending on Next request APIs. */
+function resolveSessionUser(encryptedSessionToken: string | undefined, activeWorkspaceId?: string): SessionUser | null {
+  if (!encryptedSessionToken) return null;
+
+  let sessionId: string;
+  try {
+    sessionId = sha256Hex(decrypt(encryptedSessionToken));
+  } catch {
+    return null;
+  }
+
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT u.id, u.username, u.display_name, u.email, u.avatar_url
+       FROM auth_sessions s
+       JOIN users u ON u.id = s.user_id
+       WHERE s.id = ? AND s.expires_at > ?`
+    )
+    .get(sessionId, Date.now()) as
+    | {
+        id: string;
+        username: string;
+        display_name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+      }
+    | undefined;
+
+  if (!row) return null;
+
+  const defaultWorkspace = workspacesRepo.ensureDefaultForUser(row.id, row.username);
+  const workspace = activeWorkspaceId ? workspacesRepo.get(activeWorkspaceId) : defaultWorkspace;
+  if (!workspace) return null;
+  const membership = workspacesRepo.getMembership(workspace.id, row.id);
+  if (!membership) {
+    const defaultMembership = workspacesRepo.getMembership(defaultWorkspace.id, row.id);
+    if (!defaultMembership) return null;
+    return {
+      id: row.id,
+      username: row.username,
+      displayName: row.display_name,
+      email: row.email,
+      avatarUrl: row.avatar_url,
+      workspaceId: defaultWorkspace.id,
+      role: defaultMembership.role,
+    };
+  }
+  return {
+    id: row.id,
+    username: row.username,
+    displayName: row.display_name,
+    email: row.email,
+    avatarUrl: row.avatar_url,
+    workspaceId: workspace.id,
+    role: membership.role,
+  };
+}
+
+export function getSessionUserFromToken(encryptedSessionToken: string | undefined): SessionUser | null {
+  return resolveSessionUser(encryptedSessionToken);
+}
+
+/** Resolve a session directly from an HTTP Cookie header, including Socket.IO handshakes. */
+export function getSessionUserFromCookieHeader(cookieHeader: string | undefined): SessionUser | null {
+  const cookieValues = parseCookieHeader(cookieHeader);
+  return resolveSessionUser(
+    cookieValues.get(SESSION_COOKIE),
+    cookieValues.get(ACTIVE_WORKSPACE_COOKIE),
+  );
+}
+
+export async function setActiveWorkspaceId(workspaceId: string): Promise<void> {
+  const cookieStore = await cookies();
+  const secureCookie =
+    process.env.OMNIGRID_PUBLIC_URL?.startsWith("https://") ?? process.env.NODE_ENV === "production";
+  cookieStore.set(ACTIVE_WORKSPACE_COOKIE, workspaceId, {
+    httpOnly: true,
+    secure: secureCookie,
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_MAX_AGE_MS / 1000,
+  });
 }
 
 /**
@@ -50,50 +157,10 @@ export async function createSession(userId: string): Promise<string> {
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
-  const encryptedSessionToken = cookieStore.get(SESSION_COOKIE)?.value;
-  if (!encryptedSessionToken) return null;
-
-  let sessionId: string;
-  try {
-    sessionId = sha256Hex(decrypt(encryptedSessionToken));
-  } catch {
-    cookieStore.delete(SESSION_COOKIE);
-    return null;
-  }
-
-  const db = getDb();
-  const row = db
-    .prepare(
-      `SELECT u.id, u.username, u.display_name, u.email, u.avatar_url
-       FROM auth_sessions s
-       JOIN users u ON u.id = s.user_id
-       WHERE s.id = ? AND s.expires_at > ?`
-    )
-    .get(sessionId, Date.now()) as
-    | {
-        id: string;
-        username: string;
-        display_name: string | null;
-        email: string | null;
-        avatar_url: string | null;
-      }
-    | undefined;
-
-  if (!row) {
-    // Session expired or invalid — clean up cookie
-    cookieStore.delete(SESSION_COOKIE);
-    return null;
-  }
-
-  const workspace = workspacesRepo.ensureDefaultForUser(row.id, row.username);
-  return {
-    id: row.id,
-    username: row.username,
-    displayName: row.display_name,
-    email: row.email,
-    avatarUrl: row.avatar_url,
-    workspaceId: workspace.id,
-  };
+  return resolveSessionUser(
+    cookieStore.get(SESSION_COOKIE)?.value,
+    cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value,
+  );
 }
 
 /**
@@ -109,6 +176,7 @@ export async function deleteSession(): Promise<void> {
       db.prepare("DELETE FROM auth_sessions WHERE id = ?").run(sha256Hex(decrypt(encryptedSessionToken)));
     } catch {}
     cookieStore.delete(SESSION_COOKIE);
+    cookieStore.delete(ACTIVE_WORKSPACE_COOKIE);
   }
 }
 

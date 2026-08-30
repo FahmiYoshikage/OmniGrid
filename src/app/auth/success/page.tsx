@@ -24,8 +24,16 @@ export default function AuthSuccessPage() {
   );
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setProvider(params.get("provider") ?? "account");
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        const params = new URLSearchParams(window.location.search);
+        setProvider(params.get("provider") ?? "account");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -40,7 +48,13 @@ export default function AuthSuccessPage() {
     timers.push(setTimeout(() => setFadeOut(true), steps.length * STEP_MS + FADE_BUFFER_MS));
 
     timers.push(setTimeout(() => {
-      window.location.replace("/dashboard?welcome=1");
+      const pendingInvitation = window.sessionStorage.getItem("omnigrid_pending_invitation");
+      if (pendingInvitation) {
+        window.sessionStorage.removeItem("omnigrid_pending_invitation");
+        window.location.replace(`/invitations/${encodeURIComponent(pendingInvitation)}`);
+      } else {
+        window.location.replace("/dashboard?welcome=1");
+      }
     }, steps.length * STEP_MS + FADE_BUFFER_MS + REDIRECT_BUFFER_MS));
 
     return () => timers.forEach(clearTimeout);

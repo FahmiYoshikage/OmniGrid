@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Cloud, KeyRound, Mail, RefreshCw, Save, Send, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,21 @@ interface AccountProfile {
   avatarUrl: string | null;
 }
 
+interface WorkspaceMember {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  email: string | null;
+  role: "owner" | "admin" | "operator" | "viewer";
+}
+
+interface WorkspaceSummary {
+  id: string;
+  name: string;
+  slug: string;
+  role: "owner" | "admin" | "operator" | "viewer";
+}
+
 export function SettingsClient({
   initialUser,
   sessionEmail,
@@ -51,6 +67,7 @@ export function SettingsClient({
   initialAuthAvailability: AuthAvailability;
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [account, setAccount] = useState<AccountProfile>(initialUser);
   const [username, setUsername] = useState(initialUser.username);
@@ -73,7 +90,7 @@ export function SettingsClient({
   const [authLoading, setAuthLoading] = useState(true);
   const [emailLinkAddress, setEmailLinkAddress] = useState(sessionEmail);
   const [sendingEmailLink, setSendingEmailLink] = useState(false);
-  const [authFeedbackHandled, setAuthFeedbackHandled] = useState(false);
+  const authFeedbackHandled = useRef(false);
 
   // Cloudflare state
   const [cfSettings, setCfSettings] = useState<CloudflareSettings>({ accountId: "", hasTunnelToken: false, hasApiToken: false, updatedAt: null });
@@ -84,6 +101,14 @@ export function SettingsClient({
   const [clearCfApiToken, setClearCfApiToken] = useState(false);
   const [cfLoading, setCfLoading] = useState(true);
   const [cfSaving, setCfSaving] = useState(false);
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "operator" | "viewer">("operator");
+  const [inviting, setInviting] = useState(false);
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [workspacesLoading, setWorkspacesLoading] = useState(true);
 
   async function loadTailscale() {
     setTsLoading(true);
@@ -97,6 +122,54 @@ export function SettingsClient({
       toast.error(error instanceof Error ? error.message : "Failed to load Tailscale settings");
     } finally {
       setTsLoading(false);
+    }
+  }
+
+  async function loadMembers() {
+    try {
+      const response = await fetch("/api/workspace/members", { cache: "no-store" });
+      if (!response.ok) throw new Error(await response.text());
+      const data = (await response.json()) as { members: WorkspaceMember[] };
+      setMembers(data.members);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load workspace members");
+    } finally {
+      setMembersLoading(false);
+    }
+  }
+
+  async function loadWorkspaces() {
+    try {
+      const response = await fetch("/api/workspaces", { cache: "no-store" });
+      if (!response.ok) throw new Error(await response.text());
+      const data = (await response.json()) as { activeWorkspaceId: string; workspaces: WorkspaceSummary[] };
+      setWorkspaces(data.workspaces);
+      setActiveWorkspaceId(data.activeWorkspaceId);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load workspaces");
+    } finally {
+      setWorkspacesLoading(false);
+    }
+  }
+
+  async function inviteMember() {
+    setInviting(true);
+    try {
+      const response = await fetch("/api/workspace/invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { invitationUrl?: string; error?: string };
+      if (!response.ok || !data.invitationUrl) throw new Error(data.error || "Failed to create invitation");
+      await navigator.clipboard?.writeText(data.invitationUrl);
+      toast.success("Invitation link created and copied");
+      setInviteEmail("");
+      await loadMembers();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create invitation");
+    } finally {
+      setInviting(false);
     }
   }
 
@@ -131,13 +204,22 @@ export function SettingsClient({
   }
 
   useEffect(() => {
-    void loadAuthMethods();
-    void loadTailscale();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      void loadAuthMethods();
+      void loadTailscale();
     void loadCloudflare();
+    void loadMembers();
+      void loadWorkspaces();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (authFeedbackHandled) return;
+    if (authFeedbackHandled.current) return;
     const auth = searchParams.get("auth");
     const authError = searchParams.get("authError");
     if (!auth && !authError) return;
@@ -149,10 +231,10 @@ export function SettingsClient({
     if (authError === "google-link-failed") toast.error("Failed to link Google login");
     if (authError === "email-link-failed") toast.error("Failed to link email login");
 
-    setAuthFeedbackHandled(true);
-    void loadAuthMethods();
+    authFeedbackHandled.current = true;
+    queueMicrotask(() => void loadAuthMethods());
     window.history.replaceState({}, "", "/settings");
-  }, [authFeedbackHandled, searchParams]);
+  }, [searchParams]);
 
   async function saveTailscale() {
     setTsSaving(true);
@@ -256,7 +338,7 @@ export function SettingsClient({
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || "Failed to delete account");
       toast.success("Account deleted");
-      window.location.href = "/";
+      router.push("/");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete account");
       setDeletingAccount(false);
@@ -264,9 +346,29 @@ export function SettingsClient({
   }
 
   const linkedProviders = new Set(authMethods.map((method) => method.provider));
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId);
+  const canManageMembers = activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
 
   return (
     <div className="space-y-6 p-8">
+      <Card className="border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
+        <CardHeader className="flex-row items-center justify-between gap-4">
+          <CardTitle className="flex items-center gap-2 text-base"><UserRound className="h-4 w-4 text-cyan-200" /> Workspaces</CardTitle>
+          <Badge variant="secondary">{workspaces.length}</Badge>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-white/[0.06] rounded-xl border border-white/10">
+            {workspacesLoading ? <p className="p-4 text-sm text-muted-foreground">Loading workspaces...</p> : workspaces.map((workspace) => (
+              <div key={workspace.id} className="flex items-center justify-between gap-3 p-3 text-sm">
+                <div className="min-w-0"><p className="truncate font-medium text-white">{workspace.name}</p><p className="truncate text-xs text-muted-foreground">{workspace.slug}</p></div>
+                <div className="flex items-center gap-2"><Badge variant="outline">{workspace.role}</Badge>{workspace.id === activeWorkspaceId ? <Badge>Active</Badge> : null}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">Switch the active workspace from the sidebar. Every workspace retains its own members, integrations, and operational data.</p>
+        </CardContent>
+      </Card>
+
       <Card className="border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
         <CardHeader className="flex-row items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -279,8 +381,14 @@ export function SettingsClient({
           <div className="flex flex-col gap-5 lg:flex-row">
             <div className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 lg:w-80">
               {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={displayName || username} className="h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10" />
+                <Image
+                  src={avatarUrl}
+                  alt={displayName || username}
+                  width={64}
+                  height={64}
+                  unoptimized
+                  className="h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10"
+                />
               ) : (
                 <div className="grid h-16 w-16 place-items-center rounded-2xl bg-lime-300/15 text-xl font-black text-lime-100">
                   {(displayName || username).charAt(0).toUpperCase()}
@@ -339,6 +447,29 @@ export function SettingsClient({
       </Card>
 
       <Card className="border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><UserRound className="h-4 w-4 text-cyan-200" /> Workspace members</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {canManageMembers ? <div className="grid gap-3 sm:grid-cols-[1fr_9rem_auto]">
+            <Input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="member@example.com" type="email" disabled={inviting} />
+            <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as typeof inviteRole)} className="h-10 rounded-lg border border-white/10 bg-black/30 px-3 text-sm" disabled={inviting}>
+              <option value="admin">Admin</option><option value="operator">Operator</option><option value="viewer">Viewer</option>
+            </select>
+            <Button onClick={inviteMember} disabled={inviting || !inviteEmail.trim()}><Send className="mr-2 h-4 w-4" /> Invite</Button>
+          </div> : <p className="text-sm leading-6 text-muted-foreground">Your {activeWorkspace?.role ?? "workspace"} role can view members but cannot manage invitations.</p>}
+          <div className="divide-y divide-white/[0.06] rounded-xl border border-white/10">
+            {membersLoading ? <p className="p-4 text-sm text-muted-foreground">Loading members...</p> : members.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No members found.</p> : members.map((member) => (
+              <div key={member.user_id} className="flex items-center justify-between gap-3 p-3 text-sm">
+                <div><p className="font-medium text-white">{member.display_name || member.username}</p><p className="text-xs text-muted-foreground">{member.email || member.username}</p></div>
+                <Badge variant="outline">{member.role}</Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/10 bg-white/[0.04] shadow-2xl shadow-black/10">
         <CardHeader className="flex-row items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4 text-emerald-200" />
@@ -360,7 +491,7 @@ export function SettingsClient({
               linked={linkedProviders.has("github")}
               description="OAuth login for engineering-friendly sign-in and account linking."
               actionLabel={linkedProviders.has("github") ? "GitHub linked" : "Connect GitHub"}
-              onClick={() => { window.location.href = "/api/auth/github?intent=link"; }}
+               onClick={() => { router.push("/api/auth/github?intent=link"); }}
               disabled={!authAvailability.github || linkedProviders.has("github")}
               icon={<GitHubMark className="h-4 w-4" />}
             />
@@ -370,7 +501,7 @@ export function SettingsClient({
               linked={linkedProviders.has("google")}
               description="Google OAuth with verified email so the same account can sign in from Google too."
               actionLabel={linkedProviders.has("google") ? "Google linked" : "Connect Google"}
-              onClick={() => { window.location.href = "/api/auth/google?intent=link"; }}
+               onClick={() => { router.push("/api/auth/google?intent=link"); }}
               disabled={!authAvailability.google || linkedProviders.has("google")}
               icon={<GoogleMark className="h-4 w-4" />}
             />
