@@ -88,7 +88,13 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
     }
 
     useEffect(() => {
-        void fetchContainers(false);
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) void fetchContainers(false);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const deviceSummary = useMemo(() => {

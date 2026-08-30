@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { X, Plus, Server } from "lucide-react";
@@ -63,17 +63,31 @@ export function TerminalWorkspace({
   const [tabs, setTabs] = useState<Tab[]>(persistedTabs);
   const [active, setActive] = useState<string | null>(persistedActive);
   const [pendingNodeId, setPendingNodeId] = useState<string>("");
+  const [previousNodes, setPreviousNodes] = useState<NodeOption[] | null>(null);
+  const [removedSessionIds, setRemovedSessionIds] = useState<string[]>([]);
   const tabKeyRef = useRef(persistedCounter);
   const openedInitialRef = useRef(false);
 
-  function openTab(nodeId: string) {
+  if (nodes !== previousNodes) {
+    const validNodeIds = new Set(nodes.map((node) => node.id));
+    const nextTabs = tabs.filter((tab) => validNodeIds.has(tab.nodeId));
+    setPreviousNodes(nodes);
+    setRemovedSessionIds(
+      tabs.flatMap((tab) => !validNodeIds.has(tab.nodeId) && tab.sessionId ? [tab.sessionId] : []),
+    );
+    if (nextTabs.length !== tabs.length) setTabs(nextTabs);
+    if (active && !nextTabs.some((tab) => tab.key === active)) setActive(null);
+    if (pendingNodeId && !validNodeIds.has(pendingNodeId)) setPendingNodeId("");
+  }
+
+  const openTab = useCallback((nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return;
     const key = `t-${++tabKeyRef.current}`;
     persistedCounter = tabKeyRef.current;
     setTabs((t) => [...t, { key, nodeId, label: node.name, status: "connecting" }]);
     setActive(key);
-  }
+  }, [nodes]);
 
   useEffect(() => {
     persistedTabs = tabs;
@@ -81,28 +95,18 @@ export function TerminalWorkspace({
   }, [tabs, active]);
 
   useEffect(() => {
-    const validNodeIds = new Set(nodes.map((n) => n.id));
-    setTabs((current) => {
-      if (current.every((tab) => validNodeIds.has(tab.nodeId))) return current;
-      const next = current.filter((tab) => validNodeIds.has(tab.nodeId));
-      for (const tab of current) {
-        if (!validNodeIds.has(tab.nodeId) && tab.sessionId) {
-          getSocket().emit("close", { sessionId: tab.sessionId });
-          sessionBuffers.delete(tab.sessionId);
-        }
-      }
-      return next;
-    });
-    setActive((current) => (current && tabs.some((tab) => tab.key === current && validNodeIds.has(tab.nodeId)) ? current : null));
-    setPendingNodeId((current) => (current && validNodeIds.has(current) ? current : ""));
-  }, [nodes, tabs]);
+    for (const sessionId of removedSessionIds) {
+      getSocket().emit("close", { sessionId });
+      sessionBuffers.delete(sessionId);
+    }
+  }, [removedSessionIds]);
 
   useEffect(() => {
     if (openedInitialRef.current || !initialNodeId) return;
     if (!nodes.some((n) => n.id === initialNodeId)) return;
     openedInitialRef.current = true;
     openTab(initialNodeId);
-  }, [initialNodeId, nodes]);
+  }, [initialNodeId, nodes, openTab]);
 
   function closeTab(key: string) {
     const tab = tabs.find((x) => x.key === key);

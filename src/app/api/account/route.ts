@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { deleteSession, getSessionUser } from "@/lib/auth/session";
 import { deleteUserAccount, updateUserProfile } from "@/lib/auth/accounts";
+import { protectMutation } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const securityResponse = protectMutation(request, "account", { userId: user.id });
+  if (securityResponse) return securityResponse;
 
   const body = (await request.json().catch(() => null)) as
     | { username?: unknown; displayName?: unknown; avatarUrl?: unknown }
@@ -56,9 +59,11 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const securityResponse = protectMutation(request, "account", { userId: user.id, limit: 5 });
+  if (securityResponse) return securityResponse;
 
   deleteUserAccount(user.id);
   await deleteSession();

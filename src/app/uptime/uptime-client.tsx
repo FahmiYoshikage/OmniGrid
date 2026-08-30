@@ -3,9 +3,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import {
-  Activity, AlertTriangle, ArrowUpRight, Check, ChevronDown, ChevronRight,
-  Circle, Clock, ExternalLink, Globe, Loader2, Pause, Play, Plus,
-  RefreshCw, Server, ShieldCheck, Signal, Trash2, Wifi, X, Zap,
+  Activity, AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Globe,
+  Loader2, Pause, Play, Plus, RefreshCw, Server, ShieldCheck, Signal, Trash2,
+  X, Zap,
 } from "lucide-react";
 
 /* ── types ─────────────────────────────────────────────────── */
@@ -30,6 +30,15 @@ interface MonitorStats {
 }
 interface Summary { total: number; up: number; down: number; paused: number; avgUptime24h: number }
 type Kind = "http" | "tcp" | "ping";
+interface DiscoveredContainer {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string;
+  source: string;
+}
 
 const EMPTY_FORM = { name: "", kind: "http" as Kind, target: "", interval_sec: 60, timeout_ms: 10000, method: "GET", expected_status: null as number | null, enabled: true, notify: true };
 
@@ -49,7 +58,7 @@ export function UptimeClient() {
   // Discover Docker state
   const [showDiscover, setShowDiscover] = useState(false);
   const [discovering, setDiscovering] = useState(false);
-  const [discoveredContainers, setDiscoveredContainers] = useState<any[]>([]);
+  const [discoveredContainers, setDiscoveredContainers] = useState<DiscoveredContainer[]>([]);
 
   const fetchDiscover = async () => {
     setDiscovering(true);
@@ -67,7 +76,7 @@ export function UptimeClient() {
     }
   };
 
-  const handleCreateFromDocker = (c: any) => {
+  const handleCreateFromDocker = (c: DiscoveredContainer) => {
     setShowDiscover(false);
     setForm({ ...EMPTY_FORM, name: c.name, kind: "http", target: `http://${c.name}` });
     setEditId(null);
@@ -278,7 +287,7 @@ export function UptimeClient() {
                           </div>
                           <div className="flex items-center gap-1.5 text-red-200/80">
                             <Clock className="h-3.5 w-3.5" />
-                            <span>Downtime: {formatDuration(Date.now() - s.activeIncident.started_at)}</span>
+                            <span>Downtime: {formatDuration((lastRefreshed?.getTime() ?? s.activeIncident.started_at) - s.activeIncident.started_at)}</span>
                           </div>
                         </div>
                         {s.activeIncident.cause && (
@@ -309,7 +318,7 @@ export function UptimeClient() {
                                   </span>
                                 ) : (
                                   <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400 animate-pulse">
-                                    Ongoing ({formatDuration(Date.now() - inc.started_at)})
+                                    Ongoing ({formatDuration((lastRefreshed?.getTime() ?? inc.started_at) - inc.started_at)})
                                   </span>
                                 )}
                               </div>
@@ -463,7 +472,7 @@ export function UptimeClient() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white">Docker Auto-Discovery</h2>
-                  <p className="text-xs text-muted-foreground">Containers in the 'omnigrid-net' network</p>
+                  <p className="text-xs text-muted-foreground">Containers in the &apos;omnigrid-net&apos; network</p>
                 </div>
               </div>
               <button onClick={() => setShowDiscover(false)} className="grid h-8 w-8 place-items-center rounded-xl text-muted-foreground hover:bg-white/10 hover:text-white transition"><X className="h-4 w-4" /></button>
@@ -478,7 +487,7 @@ export function UptimeClient() {
               ) : discoveredContainers.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-3 py-10">
                   <Server className="h-8 w-8 opacity-50" />
-                  <p className="text-sm font-medium">No containers found in 'omnigrid-net' network.</p>
+                  <p className="text-sm font-medium">No containers found in &apos;omnigrid-net&apos; network.</p>
                   <p className="text-xs max-w-xs text-center opacity-70">Ensure Docker is running and your containers are attached to the correct network.</p>
                 </div>
               ) : (

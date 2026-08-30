@@ -13,6 +13,7 @@ services:
 
         # WAJIB: Agar otomatis nyala jika server di-restart
         restart: unless-stopped
+        stop_grace_period: 10s
 
         # OPSIONAL TAPI PENTING: File variabel rahasia
         env_file:
@@ -39,7 +40,7 @@ services:
                     '--no-verbose',
                     '--tries=1',
                     '--spider',
-                    'http://localhost:3000/api/auth/session',
+                    'http://localhost:3000/api/health/ready',
                 ]
             interval: 30s
             timeout: 10s

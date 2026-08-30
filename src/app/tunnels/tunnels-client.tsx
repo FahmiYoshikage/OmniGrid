@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Cloud,
@@ -61,7 +61,7 @@ export function TunnelsClient({ settings, publicOrigin, publicHost, zoneHint, re
   const [loading, setLoading] = useState(readiness.account && readiness.apiToken);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTunnelId, setSelectedTunnelId] = useState("");
+  const [selectedTunnelChoice, setSelectedTunnelChoice] = useState("");
   const [hostname, setHostname] = useState(publicHost.includes(":") ? publicHost.split(":")[0] : publicHost);
   const [service, setService] = useState("http://omnigrid:3000");
   const [path, setPath] = useState("");
@@ -92,6 +92,11 @@ export function TunnelsClient({ settings, publicOrigin, publicHost, zoneHint, re
     };
   }, [overview, publishedHostnames.length]);
 
+  const selectedTunnelId =
+    selectedTunnelChoice && overview?.tunnels.some((tunnel) => tunnel.id === selectedTunnelChoice)
+      ? selectedTunnelChoice
+      : overview?.tunnels[0]?.id ?? "";
+
   async function loadOverview(showToast = false) {
     if (!readiness.account || !readiness.apiToken) {
       setLoading(false);
@@ -118,19 +123,13 @@ export function TunnelsClient({ settings, publicOrigin, publicHost, zoneHint, re
     }
   }
 
-  useEffect(() => {
+  const loadOverviewOnReadinessChange = useEffectEvent(() => {
     void loadOverview();
-  }, [readiness.account, readiness.apiToken]);
+  });
 
   useEffect(() => {
-    if (!overview?.tunnels.length) {
-      setSelectedTunnelId("");
-      return;
-    }
-    if (!selectedTunnelId || !overview.tunnels.some((tunnel) => tunnel.id === selectedTunnelId)) {
-      setSelectedTunnelId(overview.tunnels[0].id);
-    }
-  }, [overview, selectedTunnelId]);
+    queueMicrotask(loadOverviewOnReadinessChange);
+  }, [readiness.account, readiness.apiToken]);
 
   async function publishHostname(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -206,7 +205,7 @@ export function TunnelsClient({ settings, publicOrigin, publicHost, zoneHint, re
             <form className="grid gap-4" onSubmit={publishHostname}>
               <div className="grid gap-4 lg:grid-cols-2">
                 <Field label="Tunnel">
-                  <Select value={selectedTunnelId} onValueChange={(value) => setSelectedTunnelId(value ?? "") }>
+                  <Select value={selectedTunnelId} onValueChange={(value) => setSelectedTunnelChoice(value ?? "") }>
                     <SelectTrigger className="w-full bg-white/[0.04]">
                       <SelectValue placeholder={overview?.tunnels.length ? "Select tunnel" : "No tunnel available"} />
                     </SelectTrigger>

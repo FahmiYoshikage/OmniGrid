@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { NodeRow, SshMode } from "@/lib/db/repos/nodes";
+import type { SshHostKeyRow } from "@/lib/db/repos/ssh-host-keys";
 
 type CredentialKind = "ssh_key" | "password";
 
@@ -40,6 +41,7 @@ export default function NodesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<NodeRow | null>(null);
+  const [hostKeyNode, setHostKeyNode] = useState<NodeRow | null>(null);
 
   const stats = useMemo(() => {
     const tags = new Set<string>();
@@ -59,7 +61,13 @@ export default function NodesPage() {
     setLoading(false);
   }
   useEffect(() => {
-    load();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void load();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function remove(id: string) {
@@ -118,6 +126,7 @@ export default function NodesPage() {
                 node={node}
                 onEdit={() => setEditing(node)}
                 onDelete={() => remove(node.id)}
+                onHostKeys={() => setHostKeyNode(node)}
               />
             ))}
           </div>
@@ -144,6 +153,9 @@ export default function NodesPage() {
             }}
           />
         )}
+      </Dialog>
+      <Dialog open={!!hostKeyNode} onOpenChange={(v) => !v && setHostKeyNode(null)}>
+        {hostKeyNode && <HostKeysDialog node={hostKeyNode} />}
       </Dialog>
     </div>
   );
@@ -184,10 +196,12 @@ function NodeCard({
   node,
   onEdit,
   onDelete,
+  onHostKeys,
 }: {
   node: NodeRow;
   onEdit: () => void;
   onDelete: () => void;
+  onHostKeys: () => void;
 }) {
   const tags = parseTags(node.tags);
   return (
@@ -215,6 +229,9 @@ function NodeCard({
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={onEdit} title="Edit node" className="hover:bg-cyan-300/10 hover:text-cyan-100">
             <Edit3 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onHostKeys} title="Manage SSH host keys" className="hover:bg-cyan-300/10 hover:text-cyan-100">
+            <Shield className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" onClick={onDelete} title="Delete node" className="hover:bg-red-500/10">
             <Trash2 className="h-4 w-4 text-destructive" />
@@ -256,6 +273,86 @@ function NodeCard({
   );
 }
 
+function HostKeysDialog({ node }: { node: NodeRow }) {
+  const [keys, setKeys] = useState<SshHostKeyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch(`/api/nodes/${node.id}/host-keys`);
+    if (res.ok) {
+      const data = await res.json();
+      setKeys(data.hostKeys ?? []);
+    } else if (res.status === 403) {
+      toast.error("Only workspace admins can manage SSH host keys");
+    } else toast.error("Could not load SSH host keys");
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLoading(true);
+      void fetch(`/api/nodes/${node.id}/host-keys`)
+        .then(async (res) => {
+          if (!res.ok) throw new Error(res.status === 403 ? "Only workspace admins can manage SSH host keys" : "Could not load SSH host keys");
+          return res.json();
+        })
+        .then((data) => { if (!cancelled) setKeys(data.hostKeys ?? []); })
+        .catch((error: unknown) => { if (!cancelled) toast.error(error instanceof Error ? error.message : "Could not load SSH host keys"); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    });
+    return () => { cancelled = true; };
+  }, [node.id]);
+
+  async function act(key: SshHostKeyRow, action: "trust" | "replace" | "revoke") {
+    setActing(key.id);
+    const res = await fetch(`/api/nodes/${node.id}/host-keys/${key.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    setActing(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error || "Host key update failed");
+      return;
+    }
+    toast.success(`Host key ${action}ed`);
+    void load();
+  }
+
+  return (
+    <DialogContent className="max-w-2xl border-white/10 bg-zinc-950/95">
+      <DialogHeader>
+        <DialogTitle>SSH Host Keys: {node.name}</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3">
+        {loading ? <p className="text-sm text-muted-foreground">Loading host keys...</p> : keys.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No key has been observed. The first SSH connection is blocked and captured here for review.</p>
+        ) : keys.map((key) => (
+          <div key={key.id} className="border border-white/10 bg-white/[0.03] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Badge variant="outline" className={key.status === "trusted" ? "border-emerald-400/30 text-emerald-200" : key.status === "revoked" ? "border-red-400/30 text-red-200" : "border-amber-400/30 text-amber-200"}>{key.status}</Badge>
+              <span className="text-xs text-muted-foreground">Last seen {new Date(key.last_seen_at).toLocaleString()}</span>
+            </div>
+            <code className="mt-3 block break-all text-xs text-cyan-100">{key.fingerprint}</code>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {key.status === "pending" && <>
+                <Button size="sm" onClick={() => act(key, "trust")} disabled={acting === key.id}>Trust</Button>
+                <Button size="sm" variant="outline" onClick={() => act(key, "replace")} disabled={acting === key.id}>Replace trusted key</Button>
+              </>}
+              {key.status !== "revoked" && <Button size="sm" variant="outline" onClick={() => act(key, "revoke")} disabled={acting === key.id}>Revoke</Button>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </DialogContent>
+  );
+}
+
 function InfoPill({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
@@ -289,6 +386,8 @@ function NodeDialog({
     secret: "",
     passphrase: "",
     tags: parseTags(node?.tags ?? null).join(", "),
+    mac_address: node?.mac_address ?? "",
+    wol_broadcast: node?.wol_broadcast ?? "",
   });
   const matchingCredentials = credentials.filter((c) =>
     form.ssh_mode === "password" ? c.kind === "password" : c.kind === "ssh_key",
@@ -351,6 +450,8 @@ function NodeDialog({
       tags: form.tags
         ? form.tags.split(",").map((t) => t.trim()).filter(Boolean)
         : undefined,
+      mac_address: form.mac_address || null,
+      wol_broadcast: form.wol_broadcast || null,
     };
     const res = await fetch(mode === "edit" && node ? `/api/nodes/${node.id}` : "/api/nodes", {
       method: mode === "edit" ? "PUT" : "POST",
@@ -512,6 +613,29 @@ function NodeDialog({
         <Field label="Tags (comma-separated)">
           <Input value={form.tags} onChange={(e) => update("tags", e.target.value)} placeholder="prod, vps" className="h-10 bg-white/[0.04]" />
         </Field>
+        <div className="grid gap-4 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.03] p-4 md:grid-cols-2">
+          <Field label="Wake-on-LAN MAC address">
+            <Input
+              value={form.mac_address}
+              onChange={(e) => update("mac_address", e.target.value)}
+              placeholder="AA:BB:CC:DD:EE:FF"
+              pattern="(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}"
+              className="h-10 bg-white/[0.04] font-mono"
+            />
+          </Field>
+          <Field label="WoL broadcast address">
+            <Input
+              value={form.wol_broadcast}
+              onChange={(e) => update("wol_broadcast", e.target.value)}
+              placeholder="192.168.1.255"
+              inputMode="decimal"
+              className="h-10 bg-white/[0.04] font-mono"
+            />
+          </Field>
+          <p className="text-xs leading-5 text-muted-foreground md:col-span-2">
+            The OmniGrid server sends the magic packet to this network broadcast address. Both fields are required to wake this node.
+          </p>
+        </div>
         <DialogFooter className="mx-0 mb-0 rounded-2xl border-white/10 bg-white/[0.03]">
           <Button type="submit" disabled={submitting}>
             {submitting ? "Saving…" : mode === "edit" ? "Update node" : "Save node"}

@@ -11,7 +11,6 @@ import {
     KeyRound,
     LockKeyhole,
     Network,
-    Router,
     Server,
     ShieldCheck,
     TerminalSquare,
@@ -29,7 +28,7 @@ const ARCHITECTURE_RULES = [
         icon: Server,
         title: 'Every host runs Docker',
         description:
-            'Managed machines keep workloads predictable and inspectable from the control plane.',
+            'Managed machines keep workloads predictable and isolated with automated daemon log limits.',
     },
     {
         icon: Network,
@@ -38,16 +37,16 @@ const ARCHITECTURE_RULES = [
             'Containers attached to the external network become discoverable across registered hosts.',
     },
     {
-        icon: TerminalSquare,
-        title: 'SSH stays backend-only',
-        description:
-            'The browser never receives raw keys; sessions are brokered by the server with audit context.',
-    },
-    {
         icon: Cloud,
         title: 'Zero Trust ingress',
         description:
-            'Cloudflare Tunnel or an equivalent ingress exposes apps without opening inbound server ports.',
+            'Cloudflare Tunnel routes public domains directly to container names without opening inbound ports.',
+    },
+    {
+        icon: TerminalSquare,
+        title: 'SSH stays backend-only',
+        description:
+            'The browser never touches raw keys; sessions are brokered by the server with audit logging.',
     },
 ];
 
@@ -55,22 +54,22 @@ const WORKFLOW = [
     {
         step: '01',
         title: 'Bootstrap',
-        body: 'Run the one-liner on a Linux host to install Docker and prepare omnigrid-net.',
+        body: 'Run the one-liner on a clean Linux host to prepare Docker, omnigrid-net, and cloudflared.',
     },
     {
         step: '02',
         title: 'Register',
-        body: 'Add the host, SSH profile, and workspace credentials through OmniGrid.',
+        body: 'Add the host IP, SSH port 22, and encrypted credential profile through OmniGrid.',
     },
     {
         step: '03',
-        title: 'Discover',
-        body: 'Scan Docker workloads over SSH and surface containers attached to omnigrid-net.',
+        title: 'Deploy & Publish',
+        body: 'Launch workloads on omnigrid-net and expose domains via Cloudflare Zero Trust API.',
     },
     {
         step: '04',
-        title: 'Operate',
-        body: 'Open SSH tabs, inspect topology, publish tunnels, and monitor uptime from one cockpit.',
+        title: 'Operate & Monitor',
+        body: 'Open multi-tab SSH terminals, inspect live container logs, and track uptime telemetry.',
     },
 ];
 
@@ -81,14 +80,14 @@ const CAPABILITIES = [
         body: 'AES-256-GCM secret storage for private keys, passwords, OAuth tokens, and integration settings.',
     },
     {
-        icon: Router,
-        title: 'Tailscale-aware topology',
-        body: 'Blend tailnet device visibility with OmniGrid nodes so operators can see private fleet shape quickly.',
-    },
-    {
         icon: Globe2,
         title: 'Cloudflare Tunnel control',
         body: 'Inspect tunnels, published hostnames, Access apps, zones, and DNS records from workspace credentials.',
+    },
+    {
+        icon: Boxes,
+        title: 'Fleet container discovery',
+        body: 'Scan and manage Docker workloads across hosts joined to omnigrid-net via remote SSH.',
     },
     {
         icon: Gauge,

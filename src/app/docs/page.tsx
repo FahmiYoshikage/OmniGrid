@@ -43,23 +43,23 @@ const TERMS = [
         definition:
             'A workspace is the tenant boundary for settings, nodes, credentials, integrations, audit data, and monitors. In SaaS mode, every customer-owned secret belongs to a workspace.',
         example:
-            'If two teams connect different Tailscale tailnets, their tokens and node inventory must stay in separate workspaces.',
+            'If two teams connect different Cloudflare accounts or SSH profiles, their tokens and node inventory stay isolated in separate workspaces.',
     },
     {
         term: 'Node',
         icon: Server,
         definition:
-            'A node is a managed host that OmniGrid can reach over SSH. It can be a homelab machine, VPS, NAS, router box, or any Linux server prepared for the OmniGrid baseline.',
+            'A node is a managed host that OmniGrid can reach over SSH (Port 22). It can be a homelab machine, VPS, NAS, router box, or any Linux server prepared for the OmniGrid baseline.',
         example:
-            'Examples: homelab-nas, vps-prod-01, edge-router, media-host.',
+            'Examples: homelab-nas, vps-prod-01, edge-server, media-host.',
     },
     {
         term: 'omnigrid-net',
         icon: Network,
         definition:
-            'omnigrid-net is the shared external Docker network used as the discovery boundary. Containers attached to this network are considered part of the OmniGrid-operable workload surface.',
+            'omnigrid-net is the shared external Docker network used as the discovery and routing boundary. Containers attached to this network can communicate with Cloudflare Tunnel and the OmniGrid control plane.',
         example:
-            'The bootstrap command creates the Docker network so app containers can later join it.',
+            'The bootstrap command creates the Docker network so app containers can join it via networks: omnigrid-net (external: true).',
     },
     {
         term: 'Credential profile',
@@ -67,7 +67,7 @@ const TERMS = [
         definition:
             'A reusable SSH authentication profile stored in the encrypted vault. Profiles can represent private keys, passwords, or agent-oriented access patterns.',
         example:
-            'Use one profile for all Ubuntu VPS nodes and another profile for lab machines.',
+            'Use one profile for all Ubuntu VPS nodes and another profile for local homelab machines.',
     },
     {
         term: 'Control plane',
@@ -75,31 +75,31 @@ const TERMS = [
         definition:
             'The OmniGrid web application and backend server. It owns session auth, route handlers, Socket.IO SSH sessions, database access, and encrypted integration settings.',
         example:
-            'Operators click in the browser, but SSH handshakes happen in the backend control plane.',
+            'Operators click in the browser, but SSH handshakes and Cloudflare API calls happen securely in the backend control plane.',
     },
     {
         term: 'Tunnel',
         icon: Cloud,
         definition:
-            'A Zero Trust ingress path, usually Cloudflare Tunnel, used to expose internal services without opening inbound ports on managed hosts.',
+            'A Zero Trust ingress path using Cloudflare Tunnel, used to expose internal services to public hostnames directly using container names (http://container_name:port) without opening inbound ports.',
         example:
-            'Publish grafana.example.com to an internal container through Cloudflare Tunnel.',
+            'Publish vault.example.com directly to http://vaultwarden-app:80 through Cloudflare Tunnel.',
     },
     {
         term: 'Topology',
         icon: GitBranch,
         definition:
-            'A visual map of private infrastructure. OmniGrid combines local node inventory with Tailscale device data so operators can understand fleet shape quickly.',
+            'A visual map of private infrastructure. OmniGrid renders node connectivity and status so operators can understand fleet shape quickly.',
         example:
-            'Use topology to see which devices are online before opening a terminal.',
+            'Use topology to see which nodes are online and inspect node tags before deploying workloads.',
     },
     {
         term: 'Monitor',
         icon: Activity,
         definition:
-            'An uptime check for internal or external endpoints. Monitors help validate that published services and private apps remain reachable.',
+            'An uptime check for internal or external endpoints. Monitors help validate that published services, SSL certificates, and private apps remain reachable.',
         example:
-            'Track https://status.example.com or an internal service URL exposed through your tunnel.',
+            'Track https://vault.example.com or an internal service endpoint with automatic failure alerts.',
     },
 ];
 
@@ -111,18 +111,18 @@ const QUICKSTART_STEPS = [
     },
     {
         title: 'Bootstrap a Linux node',
-        body: 'Run the one-line script on a host you want OmniGrid to manage. This prepares Docker and the external network baseline.',
+        body: 'Run the one-line script on a host you want OmniGrid to manage. This prepares Docker, omnigrid-net, /opt/cloudflared, and compose templates.',
         code: BOOTSTRAP_CMD,
     },
     {
         title: 'Register the node',
-        body: 'Open the dashboard, create or select a credential profile, then add host, SSH user, and auth method in Nodes.',
+        body: 'Open the dashboard, create or select a credential profile, then add the host IP, SSH port 22, and user in Nodes.',
         code: 'Dashboard -> Credentials -> New profile\nDashboard -> Nodes -> Add node',
     },
     {
-        title: 'Operate the fleet',
-        body: 'Use Terminal for SSH sessions, Containers for omnigrid-net workloads, Topology for fleet visibility, and Tunnels for published hostnames.',
-        code: 'Terminal -> Open tab\nContainers -> Discover\nTunnels -> Published apps',
+        title: 'Deploy & Operate',
+        body: 'Deploy services into /opt/<app-name> using omnigrid-net, publish hostnames via Cloudflare Zero Trust, open SSH tabs, and monitor uptime.',
+        code: 'cp /opt/omnigrid/docker-compose.template.yml /opt/my-app/docker-compose.yml\nTunnels -> Published apps\nContainers -> Live logs',
     },
 ];
 
@@ -130,7 +130,7 @@ const FEATURE_GUIDES = [
     {
         icon: TerminalSquare,
         title: 'Terminal',
-        body: 'Use Terminal when you need an interactive shell on a registered node. OmniGrid opens SSH from the backend, multiplexes tabs through Socket.IO, and closes idle sessions.',
+        body: 'Use Terminal when you need an interactive shell on a registered node. OmniGrid opens SSH from the backend, multiplexes tabs through Socket.IO, retains buffers, and closes idle sessions.',
         learn:
             'Teach operators to think of the browser terminal as a controlled SSH broker, not a place where raw private keys live.',
     },
@@ -139,19 +139,19 @@ const FEATURE_GUIDES = [
         title: 'Containers',
         body: 'Use Containers to discover workloads that belong to the OmniGrid standard. Discovery runs docker ps through SSH and focuses on containers attached to omnigrid-net.',
         learn:
-            'If a container does not appear, first check whether it is attached to omnigrid-net on the target host.',
+            'If a container does not appear, check whether it is attached to omnigrid-net on the target host.',
     },
     {
         icon: Globe,
         title: 'Cloudflare Tunnel',
-        body: 'Use Tunnels to inspect Cloudflare Zero Trust exposure, published hostnames, Access apps, zones, and DNS CNAME records from workspace credentials.',
+        body: 'Use Tunnels to manage Cloudflare Zero Trust ingress, published hostnames, Access apps, zones, and DNS CNAME records without opening firewall ports on managed hosts.',
         learn:
-            'Cloudflare credentials are integration settings owned by a workspace, not global environment variables for every user.',
+            'Cloudflare ingress rules map public domains directly to internal container names, e.g. http://<container_name>:<port>.',
     },
     {
         icon: Activity,
         title: 'Uptime',
-        body: 'Use Uptime to check internal or public endpoints and keep incident context close to the rest of the operations cockpit.',
+        body: 'Use Uptime to check internal or public endpoints, monitor SSL certificate expiration, and keep incident context close to the rest of the operations cockpit.',
         learn:
             'Monitors should represent operator questions: is the service reachable, is the tunnel alive, and when did it fail.',
     },

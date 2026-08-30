@@ -53,7 +53,13 @@ export default function CredentialsPage() {
   }
 
   useEffect(() => {
-    load();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void load();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function remove(id: string) {

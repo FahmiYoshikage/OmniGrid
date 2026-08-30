@@ -1,293 +1,193 @@
 # OmniGrid Network Architecture
 
-> Zero Trust server operations platform for homelabs, private fleets, and self-hosted infrastructure.
+> Zero Trust server operations platform and control plane for homelabs, private fleets, and self-hosted infrastructure.
 
-OmniGrid Network Architecture gives you a secure control plane to manage servers, SSH access, topology, tunnels, identity, and workspace-scoped integrations from one place. It is built for operators who want a modern web interface without giving up Zero Trust principles.
+OmniGrid gives you a secure, unified web control plane to manage servers, SSH access, container workloads, Cloudflare Tunnels, identity, and workspace-scoped integrations from one interface. It is built for operators who want a modern management cockpit without compromising Zero Trust security principles.
 
-## What OmniGrid Network Architecture actually is
+```mermaid
+flowchart LR
+    subgraph Host ["Managed Host (OmniGrid Baseline)"]
+        subgraph Net ["Docker Network: omnigrid-net"]
+            CF["cloudflared-tunnel<br/>(/opt/cloudflared)"]
+            App1["app-vaultwarden<br/>(/opt/vaultwarden)"]
+            App2["app-grafana<br/>(/opt/grafana)"]
+        end
+        SSH["SSH Service (Port 22 Protected)"]
+        DockerD["Docker Engine (Socket /var/run/docker.sock)"]
+    end
 
-OmniGrid Network Architecture is a Zero Trust operations standard, not just a dashboard. It defines how every server in your fleet should be prepared, networked, and managed so the control plane can operate without opening inbound ports.
+    CF <-->|Outbound Tunnel Ingress| Cloudflare["Cloudflare Zero Trust Edge"]
+    User([Operator Browser]) -->|HTTPS / WSS| Cloudflare
+    Cloudflare -->|Private Route| OmniGrid["OmniGrid Control Plane<br/>Node.js + Next.js 16 + Socket.IO"]
+    OmniGrid -->|SSH Port 22 / Encrypted Vault| SSH
+    CF -->|Internal Container Routing| App1
+    CF -->|Internal Container Routing| App2
+```
 
-The standard is simple:
+---
 
-- every managed host runs Docker
-- every managed host joins a shared external network named `omnigrid-net`
-- OmniGrid connects to hosts using SSH from the control plane only
-- Cloudflare Tunnel or another Zero Trust ingress exposes the OmniGrid UI
-- all integration secrets are workspace-scoped and encrypted at rest
+## The OmniGrid Operating Standard
 
-When those rules are met, OmniGrid can discover containers across hosts, open SSH sessions without reconfiguring firewalls, and publish internal services safely.
+OmniGrid is a **Zero Trust operations standard**, not just a dashboard. It defines how every server in your fleet should be prepared, networked, and operated so workloads can be deployed and published securely without opening inbound ports on firewalls.
 
-## How OmniGrid works (mechanism)
+### The 5 Baseline Host Rules
 
-1. **Bootstrap the host**
-    - install Docker and join `omnigrid-net`
-    - ensure SSH access exists for the OmniGrid control plane
-2. **Register nodes in OmniGrid**
-    - add hostnames, SSH users, and auth methods
-    - choose whether to use SSH agent, private key, or password profile
-3. **Discover workloads**
-    - OmniGrid scans `docker ps` on every host via SSH
-    - only containers attached to `omnigrid-net` are listed
-4. **Operate from one control plane**
-    - use multi-tab SSH terminal
-    - review topology and tailnet status
-    - publish hostnames via Cloudflare Tunnel
-    - create uptime monitors for internal or external endpoints
+1. **Docker Engine**: Every managed host runs Docker Engine with automated daemon log-rotation limits.
+2. **External Discovery Boundary (`omnigrid-net`)**: Every managed host creates a shared external Docker network named `omnigrid-net`. Only containers attached to this network are discovered and operated by the control plane.
+3. **Zero Trust Ingress via Cloudflare Tunnel**: Every host runs `cloudflared` in `/opt/cloudflared` attached to `omnigrid-net`. Publishing internal services is as simple as routing public hostnames directly to container names (e.g. `vault.example.com` ➔ `http://vaultwarden-app:80`).
+4. **Standard File Structure (`/opt`)**: Workloads reside in dedicated folders under `/opt/<app-name>` using standard `docker-compose.yml` blueprints.
+5. **Direct, Secure SSH Access (Port 22)**: OmniGrid connects to target nodes using standard SSH (Port 22) originating from the control plane only, utilizing encrypted credentials stored in the platform vault.
 
-## What OmniGrid Network Architecture is for
+---
 
-OmniGrid Network Architecture is designed for teams and operators who need to:
+## 4-Step Operational Workflow
 
-- manage private servers without exposing inbound ports
-- centralize SSH access and infrastructure visibility
-- publish internal apps through Cloudflare Tunnel
-- keep secrets encrypted and scoped per workspace
-- support multiple login methods on one account
+```
+[ 01. Bootstrap ] ──> [ 02. Register ] ──> [ 03. Deploy & Expose ] ──> [ 04. Operate & Monitor ]
+  Run bootstrap.sh      Add node & SSH user     Launch app on omnigrid-net     Live logs, terminal tabs,
+  on clean Linux host   in OmniGrid web UI      & sync Cloudflare DNS CNAME     and automated uptime
+```
 
-The current platform already supports:
+1. **Bootstrap the Host**
+   - Run the one-line bootstrap script on any Linux machine.
+   - Installs Docker, creates `omnigrid-net`, sets up `/opt/cloudflared`, protects SSH port 22, and creates standard compose templates.
+2. **Register Node in OmniGrid**
+   - Create or select an encrypted credential profile (SSH key or password).
+   - Register the host IP/hostname, SSH port 22, and user in **Nodes**.
+3. **Deploy & Expose Workloads**
+   - Place application compose in `/opt/<app-name>/docker-compose.yml` attached to `omnigrid-net`.
+   - Publish hostname via Cloudflare Zero Trust directly pointing to `http://<container_name>:<port>`. No host port forwarding (`ports:`) required!
+4. **Operate from One Control Plane**
+   - Stream live container logs (*Dozzle-style*) and execute remote lifecycle actions.
+   - Open multi-tab interactive web SSH sessions.
+   - Monitor endpoint latency, SSL expiration, and uptime status.
 
-- Tailscale-aware topology and device visibility
-- web SSH terminal with multi-tab sessions
-- credential vault with AES-256-GCM encryption at rest
-- Cloudflare Tunnel monitoring and published hostname management
-- multi-login account linking with GitHub, Google, and email magic links
-- SQLite-backed sessions, audit data, and workspace-scoped settings
+---
 
-## Core capabilities
+## Standard Workload Template (`docker-compose.template.yml`)
 
-### Zero Trust access plane
+Every application managed under the OmniGrid standard follows this clean blueprint (available on bootstrapped nodes at `/opt/omnigrid/docker-compose.template.yml`):
 
-- Tailscale-aware internal access
-- Cloudflare Zero Trust / Tunnel visibility
-- no need to publish OmniGrid Network Architecture through a public reverse proxy
-- workspace-scoped integration secrets
+```yaml
+services:
+  # ----------------------------------------------------
+  # SERVICE: APLIKASI UTAMA (Web/API/Bot)
+  # ----------------------------------------------------
+  app-utama:
+    # Menggunakan image dari registry atau build lokal
+    image: vaultwarden/server:latest
+    
+    # WAJIB: Nama unik agar langsung dapat dipanggil oleh Cloudflare Tunnel
+    container_name: vaultwarden-app
+    
+    # WAJIB: Selalu restart otomatis jika server reboot
+    restart: unless-stopped
+    
+    # Variabel environment rahasia
+    env_file:
+      - .env
+      
+    # Data persisten
+    volumes:
+      - ./data:/data
+    
+    # WAJIB: Bergabung ke Virtual LAN OmniGrid (tanpa perlu expose port publik)
+    networks:
+      - omnigrid-net
 
-### Server management workflow
+# ----------------------------------------------------
+# DEKLARASI JARINGAN GLOBAL (WAJIB)
+# ----------------------------------------------------
+networks:
+  omnigrid-net:
+    external: true
+```
 
-- node inventory and SSH profiles
-- browser terminal for multiple hosts
-- topology preview for connected infrastructure
-- recent audit visibility for operator activity
+---
 
-### Identity and account linking
+## Platform Architecture & Tech Stack
 
-- sign in with GitHub
-- sign in with Google
-- sign in with one-time email magic links delivered through Gmail SMTP
-- link one, two, or all three methods to the same OmniGrid Network Architecture account
+| Layer | Choice | Rationale |
+|---|---|---|
+| **Frontend** | Next.js 16 App Router · React 19 · TailwindCSS v4 · shadcn/ui | Modern Server Components, Dark Glassmorphism, accessible primitives |
+| **Backend & Realtime** | Node.js Custom Server + Next.js handlers + Socket.IO | Single-port HTTP/WebSocket unified server without reverse-proxy hopping |
+| **SSH & Execution** | `ssh2` with agent / key / password profiles | Direct PTY multiplexing, session buffer replay, remote docker diagnostics |
+| **Database** | SQLite via `better-sqlite3` + structured migrations | High-speed, local zero-latency relational store with tenant scoping |
+| **Crypto Vault** | AES-256-GCM with PBKDF2 + Auth Tag | Tenant integration secrets & credentials encrypted at rest |
+| **Authentication** | GitHub OAuth · Google OAuth · Gmail SMTP Magic Links | Multi-provider identity linking, server-side SQLite sessions |
+| **Edge & Ingress** | Cloudflare Zero Trust API + Cloudflare Tunnel | Remote tunnel ingress management, automated DNS CNAME sync |
+| **Uptime Engine** | In-process scheduler (HTTP / TCP / Ping / TLS) | Background telemetry, 90-slot status bars, automated incident lifecycle |
 
-## Platform architecture
+---
 
-| Layer         | Choice                                                                   |
-| ------------- | ------------------------------------------------------------------------ |
-| Frontend      | Next.js 16 App Router · React 19 · TailwindCSS v4 · shadcn/ui primitives |
-| Backend       | Node.js custom server + Next.js route handlers                           |
-| Realtime      | Socket.IO + xterm.js                                                     |
-| SSH           | `ssh2` with local agent / key fallback                                   |
-| Storage       | SQLite via `better-sqlite3`                                              |
-| Crypto        | AES-256-GCM secret vault                                                 |
-| Auth          | GitHub OAuth · Google OAuth · Gmail-delivered magic links                |
-| Tunnel / Edge | Cloudflare Zero Trust API + Cloudflare Tunnel                            |
-
-## Security posture
-
-- all SSH handshakes happen on the backend
-- credentials never need to enter the frontend bundle
-- secrets are encrypted at rest with `OMNIGRID_MASTER_KEY`
-- sessions are stored server-side in SQLite
-- login methods can be linked to one OmniGrid Network Architecture account without duplicating workspaces
-- Cloudflare and Tailscale secrets are stored per workspace, not as globally exposed UI state
-
-## Quick start
+## Quick Start Guide
 
 ### 1. Install dependencies
-
 ```bash
 npm install
 ```
 
-### 2. Generate a platform master key
-
+### 2. Generate platform master key
 ```bash
 npm run keygen
 ```
-
 Copy the generated 64-character hex string into `OMNIGRID_MASTER_KEY`.
 
-### 3. Create the local environment file
-
+### 3. Create local environment configuration
 ```bash
 cp .env.example .env.local
 ```
 
-Minimum required values:
-
-```bash
-OMNIGRID_MASTER_KEY=
+Required minimal configuration:
+```env
+OMNIGRID_MASTER_KEY=your-64-character-hex-key-here
 OMNIGRID_PUBLIC_URL=http://localhost:3000
 ```
 
-### 4. Configure at least one login method
-
-You can enable any combination of the following:
-
-- `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`
-- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`
-- `GMAIL_SMTP_USER` + `GMAIL_SMTP_APP_PASSWORD`
+### 4. Configure authentication provider
+Enable any combination of:
+- **GitHub OAuth**: `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`
+- **Google OAuth**: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`
+- **Gmail SMTP (Magic Link)**: `GMAIL_SMTP_USER` + `GMAIL_SMTP_APP_PASSWORD`
 
 ### 5. Run database migrations
-
 ```bash
 npm run db:migrate
 ```
 
-### 6. Start OmniGrid Network Architecture
-
+### 6. Start OmniGrid
 ```bash
 npm run dev
 ```
+Open: `http://localhost:3000`
 
-Open:
+---
 
-```text
-http://localhost:3000
-```
+## Host Baseline Bootstrap (One-Liner)
 
-## Authentication setup
-
-### GitHub OAuth
-
-Create a GitHub OAuth app and set the callback URL to:
-
-```text
-${OMNIGRID_PUBLIC_URL}/api/auth/github/callback
-```
-
-### Google OAuth
-
-Create a Google OAuth client and set the callback URL to:
-
-```text
-${OMNIGRID_PUBLIC_URL}/api/auth/google/callback
-```
-
-### Gmail magic-link login
-
-For passwordless email login:
-
-- create or choose a Gmail account for sending auth emails
-- enable 2-step verification
-- create a Gmail App Password
-- set `GMAIL_SMTP_USER` and `GMAIL_SMTP_APP_PASSWORD`
-- optionally set `AUTH_EMAIL_FROM`
-
-OmniGrid Network Architecture will send one-time login or account-linking links to the user inbox. No password is stored in OmniGrid Network Architecture.
-
-## Workspace-scoped integrations
-
-Integrations are configured in the OmniGrid Network Architecture Settings UI and stored per workspace.
-
-### Tailscale
-
-Use the workspace Tailscale API key and tailnet to:
-
-- populate topology data
-- preview tailnet devices on the dashboard
-- support Tailscale-oriented operations
-
-### Cloudflare Zero Trust
-
-Use workspace Cloudflare credentials to:
-
-- inspect remote-managed tunnels
-- view published hostnames
-- view Cloudflare Access applications
-- inspect visible zones and DNS CNAME records
-- publish new hostnames directly from OmniGrid Network Architecture
-
-Recommended Cloudflare API token scopes:
-
-- `Cloudflare Tunnel:Read/Edit`
-- `Access: Apps and Policies Read`
-- `Zone:Read`
-- `DNS:Read/Edit`
-
-## Dashboard overview
-
-The Overview page gives a compact operations snapshot for:
-
-- Tailscale device health
-- managed nodes stored in OmniGrid Network Architecture
-- recent audit activity
-- Cloudflare tunnel and published hostname visibility
-
-This makes OmniGrid Network Architecture useful as a daily operator cockpit, not just a configuration screen.
-
-## Docker and deployment
-
-This repository includes a production-oriented Dockerfile and `docker-compose.yml`.
-
-Typical deployment model:
-
-- run OmniGrid Network Architecture behind private networking
-- expose it through Cloudflare Tunnel or your preferred Zero Trust ingress
-- keep `OMNIGRID_PUBLIC_URL` aligned with the real public origin
-
-For Cloudflare Tunnel deployments, OmniGrid Network Architecture can now help you inspect and manage published hostname mappings directly from the UI.
-
-## OmniGrid bootstrap (one-line)
-
-Use this script to standardize a Linux host into the OmniGrid Network Architecture baseline (Docker + omnigrid-net).
+To prepare a new Linux host according to the OmniGrid standard:
 
 ```bash
 curl -fsSL https://gist.githubusercontent.com/FahmiYoshikage/38fbbbfe4ab544bb16e9844efec64e51/raw/ce59bb410f50f0f13096068de5d77695c1f4b077/omnigrid-bootstrap.sh | sudo bash
 ```
 
-## Local development notes
-
-- the custom server entrypoint lives in `server/index.ts`
-- `npm run dev` starts the custom server with Next.js and Socket.IO together
-- `npm run build` validates the production application build
-- `npm run db:smoke` verifies crypto and DB behavior
-
-## Project layout
-
-```text
-src/
-├── app/                      # App Router pages and route handlers
-├── components/               # Shared UI and layout components
-└── lib/
-    ├── auth/                 # Session, identity, OAuth, email login
-    ├── cloudflare/           # Cloudflare API client and shared types
-    ├── crypto/               # AES-256-GCM helpers
-    ├── db/                   # SQLite client, schema, migrations, repos
-    ├── ssh/                  # SSH connection and diagnostics logic
-    └── tailscale/            # Tailscale API client
-server/                       # Custom Node.js server entrypoint
-data/                         # SQLite DB files
-scripts/                      # Utility scripts
+Or execute directly from this repo:
+```bash
+sudo bash bootstrap.sh
 ```
 
-## Operational principles
+---
 
-- fail fast on invalid environment config
-- prefer encrypted secret storage over long-lived plaintext env sprawl
-- keep identity flexible while preserving one workspace/account model
-- expose internal services through Zero Trust ingress instead of direct public ports
-- make operators productive from one interface without losing auditability
+## Security Posture
 
-## Current status
+- **No Inbound Public Ports**: Managed machines do not need open router ports; all web ingress travels through Cloudflare Zero Trust tunnels.
+- **Backend-Only SSH Handshakes**: Private keys and passwords never leak into the frontend bundle.
+- **Encrypted at Rest**: All sensitive credentials and tokens are encrypted with `OMNIGRID_MASTER_KEY` (AES-256-GCM).
+- **Workspace Scoped**: Integration tokens (Cloudflare API tokens, Tunnel tokens, Tailscale keys) belong to workspaces, preventing cross-tenant leakage.
+- **Auditability**: SSH sessions and operator actions are logged to SQLite with timestamps and actor metadata.
 
-OmniGrid Network Architecture is already usable as a secure server management surface for:
-
-- homelab fleets
-- private VPS estates
-- internal admin planes
-- Zero Trust-first self-hosted environments
-
-The platform is still evolving, but the foundation is now strong enough to be treated as a proper service rather than a prototype.
+---
 
 ## License
 
-Private project for now.
+Private project. All rights reserved.

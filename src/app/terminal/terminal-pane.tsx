@@ -47,9 +47,8 @@ export function TerminalPane({
   const sessionIdRef = useRef<string | null>(null);
   const [statuses, setStatuses] = useState<SshStatusEvent[]>([]);
   const [failed, setFailed] = useState<{ message: string; hint?: string } | null>(null);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(Boolean(existingSessionId));
   const [elapsedMs, setElapsedMs] = useState(0);
-  const startedAtRef = useRef<number>(Date.now());
 
   const currentCode = statuses.at(-1)?.code;
   const progress = useMemo(() => {
@@ -59,8 +58,9 @@ export function TerminalPane({
   }, [connected, currentCode]);
 
   useEffect(() => {
+    const startedAt = Date.now();
     const t = window.setInterval(() => {
-      setElapsedMs(Date.now() - startedAtRef.current);
+      setElapsedMs(Date.now() - startedAt);
     }, 150);
     return () => window.clearInterval(t);
   }, []);
@@ -88,7 +88,6 @@ export function TerminalPane({
 
     if (existingSessionId) {
       sessionIdRef.current = existingSessionId;
-      setConnected(true);
       if (initialBuffer) term.write(initialBuffer);
       term.writeln("\r\n\x1b[90m[omnigrid] reattached to existing SSH session…\x1b[0m");
     } else {

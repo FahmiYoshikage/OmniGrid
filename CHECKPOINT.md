@@ -2,6 +2,50 @@
 
 Tanggal: 2026-05-16
 
+## Update Checkpoint 2026-08-30 (Session 18) — Documentation & Landing Page Synchronization to OmniGrid Standard
+
+### 64. Documentation & Landing Page Alignment
+
+**File edit:**
+
+- `README.md`
+- `src/app/docs/page.tsx`
+- `src/app/landing-page.tsx`
+
+**Perubahan:**
+
+- Memperbarui `README.md` secara komprehensif: diagram alur sistem, 5 Aturan Baseline Host OmniGrid (Docker, `omnigrid-net`, `cloudflared`, `/opt` layout, SSH port 22), alur 4 langkah operasional (*Bootstrap ➔ Register ➔ Deploy & Expose ➔ Operate & Monitor*), cetak biru `docker-compose.template.yml`, panduan quickstart, serta penjelasan keamanan.
+- Memperbarui `src/app/docs/page.tsx`: menyelaraskan glosarium core terms, instruksi quickstart, dan panduan fitur Cloudflare Tunnel / Containers dengan standar routing `http://<container_name>:<port>`.
+- Memperbarui `src/app/landing-page.tsx`: menyelaraskan kartu Architecture Rules, alur workflow 01–04, serta kapabilitas platform.
+
+**Verifikasi:**
+
+- `next build` berhasil (34 routes ter-generate, 0 TypeScript error).
+
+## Update Checkpoint 2026-08-30 (Session 17) — Bootstrap Baseline Security & Zero-Clutter Standard
+
+### 63. Bootstrap Script Refactor (Security by Design)
+
+**File edit:**
+
+- `bootstrap.sh`
+
+**Perubahan:**
+
+- Menghapus seluruh dependensi dan instalasi Tailscale (`tailscale.com/install.sh`, `tailscale up`) dari skrip bootstrap guna mencegah insiden *network lockout* dan isolasi mesin.
+- Menghapus celah keamanan fatal: injeksi konfigurasi `dockerd -H tcp://$TS_IP:2375` (`/etc/systemd/system/docker.service.d/override.conf`) yang sebelumnya membuka unauthenticated Docker remote API di port 2375.
+- Memastikan akses SSH (Port 22 standar) tetap aktif dan secara eksplisit diizinkan pada firewall (UFW) agar operator tidak terkunci saat mengelola host.
+- Membersihkan sampah pembuatan direktori yang tidak relevan di `/opt` (menghapus pembuatan folder `titan-node` dan `college-notulent`). Struktur direktori `/opt` kini hanya menyisakan direktori standar: `/opt/omnigrid` dan `/opt/cloudflared`.
+- Merapikan setup Docker Engine dengan logging limit di `/etc/docker/daemon.json` (max-size: 10m, max-file: 3) menggunakan penggabungan aman (`jq`) jika file konfigurasi sudah ada.
+- Menyiapkan pembuatan Docker external network `omnigrid-net` serta konfigurasi `/opt/cloudflared/docker-compose.yml` terstandar dengan `.env` berizin `chmod 600`.
+- Menambahkan template `docker-compose.template.yml` standar OmniGrid di `/opt/omnigrid/docker-compose.template.yml` sebagai panduan/cetak biru (*blueprint*) pembuatan service baru yang siap terhubung ke `omnigrid-net`.
+- Memperbaiki handling permission `chown` agar aman saat dieksekusi via `sudo` maupun `root` langsung.
+
+**Verifikasi:**
+
+- `bash -n bootstrap.sh` berhasil (exit code 0).
+- `next build` berhasil tanpa error TypeScript.
+
 ## Update Checkpoint 2026-05-31 (Session 12) — Landing Page Architecture Rewrite
 
 ### 57. Landing Page Comprehensiveness Pass

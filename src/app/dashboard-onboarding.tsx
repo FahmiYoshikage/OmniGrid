@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, KeyRound, LayoutDashboard, Network, Server, Settings, Terminal } from "lucide-react";
+import { KeyRound, LayoutDashboard, Network, Server, Settings, Terminal } from "lucide-react";
 
 const STEPS = [
   {
@@ -41,8 +41,14 @@ export function DashboardOnboarding({ open }: { open: boolean }) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    const skipped = window.localStorage.getItem("omnigrid_onboarding_done") === "1";
-    if (open && !skipped) setVisible(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      const skipped = window.localStorage.getItem("omnigrid_onboarding_done") === "1";
+      if (!cancelled && open && !skipped) setVisible(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   if (!visible) return null;

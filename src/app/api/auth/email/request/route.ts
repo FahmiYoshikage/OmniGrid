@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { createEmailLoginToken } from "@/lib/auth/accounts";
 import { sendMagicLinkEmail } from "@/lib/auth/mailer";
+import { protectMutation, protectRateLimit } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,10 @@ const EmailRequestSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const rateResponse = protectRateLimit(req, "auth-email-request", { limit: 5, windowMs: 10 * 60_000 });
+  if (rateResponse) return rateResponse;
+  const securityResponse = protectMutation(req, "auth-email-request-origin", { limit: 5, windowMs: 10 * 60_000 });
+  if (securityResponse) return securityResponse;
   const body = await req.json().catch(() => null);
   const parsed = EmailRequestSchema.safeParse(body);
   if (!parsed.success) {

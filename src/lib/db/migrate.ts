@@ -63,9 +63,26 @@ export function migrate(): { applied: number[]; current: number } {
   return { applied, current: currentVersion() };
 }
 
+/** Return migration state without changing the database. */
+export function migrationStatus(): { current: number; expected: number } {
+  const db = getDb();
+  const schemaVersion = db
+    .prepare("SELECT MAX(version) AS v FROM schema_version")
+    .get() as { v: number | null } | undefined;
+  let expected = 1;
+  try {
+    for (const file of readdirSync(join(HERE, "migrations"))) {
+      const match = /^(\d+)_.*\.sql$/.exec(file);
+      if (match) expected = Math.max(expected, Number(match[1]));
+    }
+  } catch {
+    // The baseline is the only migration when the directory is absent.
+  }
+  return { current: schemaVersion?.v ?? 0, expected };
+}
+
 // Allow `tsx src/lib/db/migrate.ts` from npm script.
 if (import.meta.url === `file://${process.argv[1]}`) {
   const result = migrate();
-  // eslint-disable-next-line no-console
   console.log(`[migrate] current version: ${result.current}, newly applied: [${result.applied.join(", ")}]`);
 }

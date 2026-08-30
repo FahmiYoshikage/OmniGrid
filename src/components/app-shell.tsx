@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard,
     Network,
@@ -20,8 +20,18 @@ import {
     ShieldCheck,
     Settings,
     Boxes,
+    Building2,
+    Check,
+    ChevronsUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type NavItem = {
     href: string;
@@ -45,9 +55,9 @@ const NAV: NavItem[] = [
     { href: '/containers', label: 'Containers', icon: Boxes },
     { href: '/tunnels', label: 'Cloudflare Tunnel', icon: Globe },
     { href: '/uptime', label: 'Uptime', icon: Activity },
-    { href: '/runbooks', label: 'Runbooks', icon: PlayCircle, soon: true },
-    { href: '/audit', label: 'Audit Log', icon: ScrollText, soon: true },
-    { href: '/wol', label: 'Wake-on-LAN', icon: Power, soon: true },
+    { href: '/runbooks', label: 'Runbooks', icon: PlayCircle },
+    { href: '/audit', label: 'Audit Log', icon: ScrollText },
+    { href: '/wol', label: 'Wake-on-LAN', icon: Power },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
@@ -69,21 +79,28 @@ export function AppShell({ children, user }: AppShellProps) {
     const publicRoute =
         pathname === '/login' ||
         pathname?.startsWith('/auth/') ||
+        pathname?.startsWith('/invitations/') ||
         pathname === '/' ||
         pathname === '/privacy-policy' ||
         pathname === '/terms' ||
         pathname === '/docs';
 
     useEffect(() => {
-        setCurrentUser(user ?? null);
-        setSessionChecked(Boolean(user));
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (cancelled) return;
+            setCurrentUser(user ?? null);
+            setSessionChecked(Boolean(user));
+        });
+        return () => {
+            cancelled = true;
+        };
     }, [user]);
 
     useEffect(() => {
         if (publicRoute || currentUser || sessionChecked) return;
 
         let cancelled = false;
-        setCheckingSession(true);
 
         async function refreshSession() {
             try {
@@ -106,7 +123,11 @@ export function AppShell({ children, user }: AppShellProps) {
             }
         }
 
-        void refreshSession();
+        queueMicrotask(() => {
+            if (cancelled) return;
+            setCheckingSession(true);
+            void refreshSession();
+        });
 
         return () => {
             cancelled = true;
@@ -189,6 +210,7 @@ export function AppShell({ children, user }: AppShellProps) {
                 </nav>
 
                 <div className="relative mt-auto p-3">
+                    <WorkspaceSwitcher />
                     <div className="mb-3 flex flex-col gap-1 border-b border-white/10 pb-3">
                         {BOTTOM_NAV.map((item) => {
                             const active = pathname?.startsWith(item.href);
@@ -223,9 +245,12 @@ export function AppShell({ children, user }: AppShellProps) {
                         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                             <div className="flex items-center gap-3">
                                 {currentUser.avatarUrl ? (
-                                    <img
+                                    <Image
                                         src={currentUser.avatarUrl}
                                         alt={currentUser.username}
+                                        width={36}
+                                        height={36}
+                                        unoptimized
                                         className="h-9 w-9 rounded-xl ring-1 ring-white/10"
                                     />
                                 ) : (
@@ -262,6 +287,83 @@ export function AppShell({ children, user }: AppShellProps) {
             <main className="m-3 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/20 shadow-2xl shadow-black/20 backdrop-blur-xl">
                 <div className="h-full overflow-auto">{children}</div>
             </main>
+        </div>
+    );
+}
+
+type WorkspaceSummary = {
+    id: string;
+    name: string;
+    slug: string;
+    role: 'owner' | 'admin' | 'operator' | 'viewer';
+};
+
+function WorkspaceSwitcher() {
+    const pathname = usePathname();
+    const router = useRouter();
+    const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+    const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+    const [switching, setSwitching] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function loadWorkspaces() {
+            const response = await fetch('/api/workspaces', { cache: 'no-store' });
+            if (!response.ok || cancelled) return;
+            const data = (await response.json()) as { activeWorkspaceId: string; workspaces: WorkspaceSummary[] };
+            setWorkspaces(data.workspaces);
+            setActiveWorkspaceId(data.activeWorkspaceId);
+        }
+        void loadWorkspaces();
+        return () => { cancelled = true; };
+    }, []);
+
+    const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId);
+    if (!activeWorkspace) return null;
+
+    async function switchWorkspace(workspace: WorkspaceSummary) {
+        if (workspace.id === activeWorkspaceId || switching) return;
+        setSwitching(true);
+        try {
+            const response = await fetch('/api/workspaces', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workspaceId: workspace.id }),
+            });
+            if (!response.ok) return;
+            setActiveWorkspaceId(workspace.id);
+            router.replace(pathname || '/dashboard');
+            router.refresh();
+        } finally {
+            setSwitching(false);
+        }
+    }
+
+    return (
+        <div className="mb-3 border-b border-white/10 pb-3">
+            <DropdownMenu>
+                <DropdownMenuTrigger
+                    className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left transition hover:bg-white/[0.08]"
+                    disabled={switching}
+                >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-cyan-300/15 text-cyan-100"><Building2 className="h-4 w-4" /></span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-white">{activeWorkspace.name}</span>
+                        <span className="block text-[11px] capitalize text-muted-foreground">{activeWorkspace.role}</span>
+                    </span>
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-60 border border-white/10 bg-slate-950 p-1 text-white" align="start">
+                    <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+                    {workspaces.map((workspace) => (
+                        <DropdownMenuItem key={workspace.id} onClick={() => void switchWorkspace(workspace)} className="min-h-11 cursor-pointer px-2 py-2">
+                            <Building2 className="h-4 w-4 text-cyan-200" />
+                            <span className="min-w-0 flex-1"><span className="block truncate">{workspace.name}</span><span className="block text-xs capitalize text-muted-foreground">{workspace.role}</span></span>
+                            {workspace.id === activeWorkspaceId ? <Check className="h-4 w-4 text-emerald-200" /> : null}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     );
 }
@@ -337,15 +439,16 @@ function SessionRefreshScreen() {
 
 function LogoutButton() {
     const [loading, setLoading] = React.useState(false);
+    const router = useRouter();
 
     async function handleLogout() {
         setLoading(true);
         try {
             const res = await fetch('/api/auth/logout', { method: 'POST' });
             const data = await res.json().catch(() => ({ displayName: '' }));
-            window.location.href = `/auth/logout?name=${encodeURIComponent(data.displayName || '')}`;
+            router.push(`/auth/logout?name=${encodeURIComponent(data.displayName || '')}`);
         } catch {
-            window.location.href = '/auth/logout';
+            router.push('/auth/logout');
         }
     }
 
