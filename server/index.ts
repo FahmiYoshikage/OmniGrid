@@ -14,6 +14,7 @@ import next from "next";
 import { Server as IOServer } from "socket.io";
 import { migrate } from "@/lib/db/migrate";
 import { attachSshNamespace } from "@/lib/ssh/socket";
+import { closeAll as closeAllSsh } from "@/lib/ssh/manager";
 import { startUptimeChecker, stopUptimeChecker } from "@/lib/uptime/checker";
 import { getEnv } from "@/lib/env";
 
@@ -44,20 +45,40 @@ async function main() {
   });
   attachSshNamespace(io);
 
+  let shuttingDown = false;
+
   httpServer.listen(env.OMNIGRID_PORT, env.OMNIGRID_HOST, () => {
     console.log(
       `[omnigrid] ready  http://${env.OMNIGRID_HOST}:${env.OMNIGRID_PORT}  ` +
         `(${dev ? "dev" : "prod"})`,
     );
-    startUptimeChecker();
+    if (!shuttingDown) startUptimeChecker();
   });
 
-  const shutdown = (sig: string) => {
+  const shutdown = async (sig: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log(`[omnigrid] ${sig} received, shutting down`);
-    stopUptimeChecker();
-    io.close();
-    httpServer.close(() => process.exit(0));
-    setTimeout(() => process.exit(1), 5000).unref();
+    await stopUptimeChecker();
+    closeAllSsh();
+
+    const closeIo = new Promise<void>((resolve) => io.close(() => resolve()));
+    const closeHttp = new Promise<void>((resolve) => {
+      httpServer.close(() => resolve());
+    });
+    const deadline = new Promise<"deadline">((resolve) => {
+      const timer = setTimeout(() => resolve("deadline"), 5000);
+      timer.unref();
+    });
+    const result = await Promise.race([
+      Promise.all([closeIo, closeHttp]).then(() => "closed" as const),
+      deadline,
+    ]);
+    if (result === "deadline") {
+      console.error("[omnigrid] shutdown deadline exceeded");
+      process.exitCode = 1;
+    }
+    process.exit();
   };
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
