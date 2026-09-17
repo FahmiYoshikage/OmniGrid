@@ -9,7 +9,7 @@ export interface WorkerClock {
 }
 
 export interface JobWorkerOptions {
-  workspaceId: string;
+  workspaceId?: string;
   handlers: JobHandlerRegistry;
   workerId?: string;
   concurrency?: number;
@@ -64,10 +64,11 @@ export function createJobWorker(options: JobWorkerOptions): JobWorker {
     }
   };
   const run = async (job: OperationJob) => {
+    const wsId = job.workspaceId;
     const controller = new AbortController();
     active.set(job.id, controller);
     try {
-      const running = jobsRepo.markRunning(job.id, options.workspaceId, workerId, clock.now());
+      const running = jobsRepo.markRunning(job.id, wsId, workerId, clock.now());
       if (!running) return;
       emit("running", running);
       const handler = options.handlers.get(running.operation);
@@ -75,16 +76,16 @@ export function createJobWorker(options: JobWorkerOptions): JobWorker {
       const result = await handler(running.payload, {
         job: running,
         signal: controller.signal,
-        emit: (type, data) => { jobsRepo.appendEvent(running.id, options.workspaceId, type, data, clock.now()); },
+        emit: (type, data) => { jobsRepo.appendEvent(running.id, wsId, type, data, clock.now()); },
       });
-      const current = jobsRepo.get(running.id, options.workspaceId);
+      const current = jobsRepo.get(running.id, wsId);
       const status = current?.status === "cancel_requested" ? "cancelled" : "succeeded";
-      const finished = jobsRepo.transition(running.id, options.workspaceId, { status, result }, workerId, clock.now());
+      const finished = jobsRepo.transition(running.id, wsId, { status, result }, workerId, clock.now());
       if (finished) emit(status, finished);
     } catch (error) {
-      const current = jobsRepo.get(job.id, options.workspaceId);
+      const current = jobsRepo.get(job.id, wsId);
       const status = current?.status === "cancel_requested" || controller.signal.aborted ? "cancelled" : "failed";
-      const finished = jobsRepo.transition(job.id, options.workspaceId, { status, error: error instanceof Error ? error.message : String(error) }, workerId, clock.now());
+      const finished = jobsRepo.transition(job.id, wsId, { status, error: error instanceof Error ? error.message : String(error) }, workerId, clock.now());
       if (finished) emit(status, finished);
     } finally {
       active.delete(job.id);
@@ -95,11 +96,13 @@ export function createJobWorker(options: JobWorkerOptions): JobWorker {
   async function tick() {
     if (!started) return;
     const recovered = jobsRepo.recoverExpiredLeases(clock.now());
-    if (recovered) {
+    if (recovered && options.workspaceId) {
       jobsRepo.list(options.workspaceId, { status: "pending", limit: recovered }).forEach((job) => emit("recovered", job));
     }
     while (!stopping && active.size < concurrency) {
-      const job = jobsRepo.acquireLease(options.workspaceId, workerId, leaseMs, clock.now());
+      const job = options.workspaceId
+        ? jobsRepo.acquireLease(options.workspaceId, workerId, leaseMs, clock.now())
+        : jobsRepo.acquireLeaseGlobal(workerId, leaseMs, clock.now());
       if (!job) break;
       emit("leased", job);
       void run(job);

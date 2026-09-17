@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth/api";
 import { notificationsRepo } from "@/lib/db/repos/notifications";
-import { dispatchNotification } from "@/lib/notifications/dispatcher";
+import { dispatchToChannel } from "@/lib/notifications/dispatcher";
 import { protectMutation } from "@/lib/security/request";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ export async function POST(
   const channel = notificationsRepo.get(id, user.workspaceId);
   if (!channel) return NextResponse.json({ error: "Channel not found" }, { status: 404 });
 
-  const results = await dispatchNotification(user.workspaceId, {
+  const result = await dispatchToChannel(user.workspaceId, id, {
     type: "test.alert",
     title: "OmniGrid Test Notification",
     message: `Test alert dispatched by @${user.username} from OmniGrid Control Plane.`,
@@ -33,9 +33,8 @@ export async function POST(
     },
   });
 
-  const thisResult = results.find((r) => r.channelId === id);
   return NextResponse.json({
-    ok: thisResult?.success ?? false,
-    result: thisResult,
+    ok: result.success,
+    result,
   });
 }

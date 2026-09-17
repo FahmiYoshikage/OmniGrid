@@ -17,6 +17,8 @@ import { attachSshNamespace } from "@/lib/ssh/socket";
 import { attachOperationsNamespace } from "@/lib/operations/socket";
 import { closeAll as closeAllSsh } from "@/lib/ssh/manager";
 import { startUptimeChecker, stopUptimeChecker } from "@/lib/uptime/checker";
+import { createJobWorker } from "@/lib/jobs/worker";
+import { getDefaultJobHandlers } from "@/lib/jobs/handlers";
 import { getEnv } from "@/lib/env";
 
 async function main() {
@@ -47,8 +49,27 @@ async function main() {
   attachSshNamespace(io);
   const operations = attachOperationsNamespace(io);
 
-  // Pass this publisher to job producers. They call publish({ workspaceId, jobId, type, payload }).
-  void operations;
+  const jobWorker = createJobWorker({
+    handlers: getDefaultJobHandlers(),
+    concurrency: 2,
+    pollMs: 1000,
+    onEvent: (event) => {
+      operations.publish({
+        workspaceId: event.job.workspaceId,
+        jobId: event.job.id,
+        type: `job:${event.type}`,
+        payload: {
+          jobId: event.job.id,
+          operation: event.job.operation,
+          status: event.job.status,
+          attempt: event.job.attempt,
+          result: event.job.result,
+          error: event.job.error,
+          data: event.data,
+        },
+      });
+    },
+  });
 
   let shuttingDown = false;
 
@@ -57,7 +78,11 @@ async function main() {
       `[omnigrid] ready  http://${env.OMNIGRID_HOST}:${env.OMNIGRID_PORT}  ` +
         `(${dev ? "dev" : "prod"})`,
     );
-    if (!shuttingDown) startUptimeChecker();
+    if (!shuttingDown) {
+      startUptimeChecker();
+      jobWorker.start();
+      console.log(`[omnigrid] background job worker daemon started`);
+    }
   });
 
   const shutdown = async (sig: string) => {
@@ -65,6 +90,8 @@ async function main() {
     shuttingDown = true;
     console.log(`[omnigrid] ${sig} received, shutting down`);
     await stopUptimeChecker();
+    console.log(`[omnigrid] stopping background job worker...`);
+    await jobWorker.stop(5000);
     closeAllSsh();
 
     const closeIo = new Promise<void>((resolve) => io.close(() => resolve()));

@@ -49,7 +49,7 @@ export function NotificationSettingsCard() {
 
   // New channel form state
   const [name, setName] = useState("");
-  const [type, setType] = useState<"telegram" | "discord" | "webhook">("telegram");
+  const [type, setType] = useState<"telegram" | "discord" | "webhook" | "email">("telegram");
   // Telegram
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
@@ -58,6 +58,12 @@ export function NotificationSettingsCard() {
   // Webhook
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
+  // Email
+  const [emailTo, setEmailTo] = useState("");
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
 
   async function loadData() {
     setLoading(true);
@@ -113,6 +119,17 @@ export function NotificationSettingsCard() {
           throw new Error("Target Webhook URL is required");
         }
         config = { url: webhookUrl.trim(), secret: webhookSecret.trim() || undefined };
+      } else if (type === "email") {
+        if (!emailTo.trim()) {
+          throw new Error("Recipient email address is required");
+        }
+        config = {
+          to: emailTo.trim(),
+          ...(smtpHost.trim() ? { smtpHost: smtpHost.trim() } : {}),
+          ...(smtpPort.trim() ? { smtpPort: Number(smtpPort.trim()) } : {}),
+          ...(smtpUser.trim() ? { smtpUser: smtpUser.trim() } : {}),
+          ...(smtpPass.trim() ? { smtpPass: smtpPass.trim() } : {}),
+        };
       }
 
       const res = await fetch("/api/notifications/channels", {
@@ -138,6 +155,11 @@ export function NotificationSettingsCard() {
       setDiscordWebhookUrl("");
       setWebhookUrl("");
       setWebhookSecret("");
+      setEmailTo("");
+      setSmtpHost("");
+      setSmtpPort("");
+      setSmtpUser("");
+      setSmtpPass("");
       setShowAddForm(false);
       await loadData();
     } catch (error) {
@@ -208,7 +230,7 @@ export function NotificationSettingsCard() {
       <CardContent className="space-y-6">
         <p className="text-sm leading-6 text-muted-foreground">
           Receive real-time notifications when service outages are detected by the Uptime Monitor,
-          or when node incidents recover. Supported providers include Telegram, Discord, and custom Webhooks.
+          or when node incidents recover. Supported providers include Telegram, Discord, Email, and custom Webhooks.
         </p>
 
         {showAddForm && (
@@ -231,13 +253,14 @@ export function NotificationSettingsCard() {
                 <select
                   id="channelType"
                   value={type}
-                  onChange={(e) => setType(e.target.value as "telegram" | "discord" | "webhook")}
+                  onChange={(e) => setType(e.target.value as "telegram" | "discord" | "webhook" | "email")}
                   className="h-10 w-full rounded-md border border-white/10 bg-black/40 px-3 text-sm text-white"
                   disabled={submitting}
                 >
                   <option value="telegram">Telegram Bot</option>
                   <option value="discord">Discord Webhook</option>
                   <option value="webhook">Generic Webhook (HMAC-SHA256)</option>
+                  <option value="email">Email Notification</option>
                 </select>
               </div>
             </div>
@@ -312,6 +335,80 @@ export function NotificationSettingsCard() {
                     disabled={submitting}
                   />
                   <p className="text-xs text-muted-foreground">Sent in X-OmniGrid-Signature header</p>
+                </div>
+              </div>
+            )}
+
+            {type === "email" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="emailTo">Recipient Email Address</Label>
+                  <Input
+                    id="emailTo"
+                    type="email"
+                    placeholder="alerts@yourdomain.com"
+                    value={emailTo}
+                    onChange={(e) => setEmailTo(e.target.value)}
+                    disabled={submitting}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Direct recipient for incident reports and recoveries
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 space-y-3">
+                  <div className="text-xs font-medium text-zinc-400">
+                    Custom SMTP (Optional — falls back to system SMTP if omitted)
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="smtpHost" className="text-xs">SMTP Host</Label>
+                      <Input
+                        id="smtpHost"
+                        placeholder="smtp.example.com"
+                        className="h-8 text-xs"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="smtpPort" className="text-xs">SMTP Port</Label>
+                      <Input
+                        id="smtpPort"
+                        type="number"
+                        placeholder="587"
+                        className="h-8 text-xs"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="smtpUser" className="text-xs">SMTP Username</Label>
+                      <Input
+                        id="smtpUser"
+                        placeholder="user@example.com"
+                        className="h-8 text-xs"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="smtpPass" className="text-xs">SMTP Password</Label>
+                      <Input
+                        id="smtpPass"
+                        type="password"
+                        placeholder="••••••••"
+                        className="h-8 text-xs"
+                        value={smtpPass}
+                        onChange={(e) => setSmtpPass(e.target.value)}
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

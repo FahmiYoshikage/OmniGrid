@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
 import { migrate } from "@/lib/db/migrate";
 import { notificationsRepo } from "@/lib/db/repos/notifications";
-import { dispatchNotification } from "./dispatcher";
+import { dispatchNotification, dispatchToChannel } from "./dispatcher";
 
 function createWorkspace(label: string) {
   const db = getDb();
@@ -66,6 +66,29 @@ describe("notifications and dispatcher", () => {
     expect(reEnabled[0]?.config.botToken).toBe("123456789:ABCdefGhIJK");
   });
 
+  it("masks and validates email notification channels properly", () => {
+    const ws = createWorkspace("notif-email-ws");
+
+    const emailChannel = notificationsRepo.create(
+      {
+        name: "SRE Email Alerts",
+        type: "email",
+        config: {
+          to: "sre-team@example.com",
+          smtpHost: "smtp.mailgun.org",
+          smtpUser: "postmaster@example.com",
+          smtpPass: "secret-smtp-password-12345",
+        },
+        events: ["uptime.incident", "node.down"],
+      },
+      ws,
+    );
+
+    expect(emailChannel.type).toBe("email");
+    expect(emailChannel.configMasked.to).toBe("sre-team@example.com");
+    expect(emailChannel.configMasked.smtpPass).toContain("••••");
+  });
+
   it("records delivery audit trail when dispatching notifications", async () => {
     const ws = createWorkspace("notif-audit-ws");
 
@@ -96,5 +119,32 @@ describe("notifications and dispatcher", () => {
     expect(deliveries[0]?.status).toBe("failed");
     expect(deliveries[0]?.eventType).toBe("uptime.incident");
     expect(deliveries[0]?.error).toBeDefined();
+  });
+
+  it("supports direct dispatchToChannel for testing or targeting", async () => {
+    const ws = createWorkspace("notif-direct-ws");
+
+    const channel = notificationsRepo.create(
+      {
+        name: "Test Direct Email",
+        type: "email",
+        config: {
+          to: "invalid-recipient-without-domain",
+        },
+        events: ["uptime.incident"],
+      },
+      ws,
+    );
+
+    const result = await dispatchToChannel(ws, channel.id, {
+      type: "test.alert",
+      title: "Test Alert",
+      message: "Direct alert verification",
+      severity: "info",
+    });
+
+    expect(result.channelId).toBe(channel.id);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Invalid email recipient address");
   });
 });

@@ -99,6 +99,24 @@ export const jobsRepo = {
     return this.lease(workspaceId, workerId, leaseMs, now);
   },
 
+  leaseGlobal(workerId: string, leaseMs = 30_000, now = Date.now()): OperationJob | undefined {
+    const db = getDb();
+    return db.transaction(() => {
+      const row = db.prepare(
+        "SELECT id, workspace_id FROM operation_jobs WHERE status = 'pending' AND available_at <= ? ORDER BY created_at, id LIMIT 1"
+      ).get(now) as { id: string; workspace_id: string } | undefined;
+      if (!row) return undefined;
+      db.prepare(`UPDATE operation_jobs SET status = 'running', attempt = attempt + 1,
+        started_at = COALESCE(started_at, ?), updated_at = ?, lease_owner = ?, lease_expires_at = ?
+        WHERE id = ? AND workspace_id = ? AND status = 'pending'`).run(now, now, workerId, now + Math.max(1, leaseMs), row.id, row.workspace_id);
+      return read(db, row.id, row.workspace_id);
+    })();
+  },
+
+  acquireLeaseGlobal(workerId: string, leaseMs?: number, now?: number) {
+    return this.leaseGlobal(workerId, leaseMs, now);
+  },
+
   markRunning(id: string, workspaceId: string, workerId: string, now = Date.now()): OperationJob | undefined {
     const db = getDb();
     const changed = db.prepare("UPDATE operation_jobs SET updated_at = ? WHERE id = ? AND workspace_id = ? AND status = 'running' AND lease_owner = ?").run(now, id, workspaceId, workerId);

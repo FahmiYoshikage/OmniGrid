@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { jobsRepo } from "./repository";
 import { createJobWorker, type WorkerEvent } from "./worker";
-import { createJobHandlerRegistry } from "./handlers";
+import { createJobHandlerRegistry, getDefaultJobHandlers } from "./handlers";
 
 function workspace(label: string) {
   const db = getDb();
@@ -97,5 +97,32 @@ describe("job worker", () => {
     const finished = jobsRepo.get(job.id, wsId);
     expect(finished?.status).toBe("failed");
     expect(finished?.error).toBe("Simulated job failure");
+  });
+
+  it("processes jobs across multiple workspaces in global daemon mode using default handlers", async () => {
+    const ws1 = workspace("global-daemon-ws1");
+    const ws2 = workspace("global-daemon-ws2");
+
+    const globalWorker = createJobWorker({
+      handlers: getDefaultJobHandlers(),
+      concurrency: 2,
+      pollMs: 50,
+    });
+
+    const job1 = jobsRepo.create({ operation: "system.ping", payload: { msg: "from ws1" } }, ws1);
+    const job2 = jobsRepo.create({ operation: "system.ping", payload: { msg: "from ws2" } }, ws2);
+
+    globalWorker.start();
+    await globalWorker.drain();
+    await globalWorker.stop(500);
+
+    const res1 = jobsRepo.get(job1.id, ws1);
+    const res2 = jobsRepo.get(job2.id, ws2);
+
+    expect(res1?.status).toBe("succeeded");
+    expect(res1?.result).toMatchObject({ ok: true, received: { msg: "from ws1" } });
+
+    expect(res2?.status).toBe("succeeded");
+    expect(res2?.result).toMatchObject({ ok: true, received: { msg: "from ws2" } });
   });
 });

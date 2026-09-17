@@ -7,17 +7,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/app-shell';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
     Activity,
     Boxes,
+    Check,
+    Copy,
     ExternalLink,
+    Play,
     RefreshCw,
+    RotateCw,
     Search,
     Server,
     Settings,
     ShieldCheck,
+    Square,
+    Terminal,
     Wifi,
 } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 type TailnetSnapshot = {
     devices: Array<{
@@ -41,6 +54,7 @@ type ContainerEntry = {
     status: string;
     ports: string;
     source: string;
+    nodeId?: string;
 };
 
 interface ContainersClientProps {
@@ -55,6 +69,69 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
     const [query, setQuery] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+    const [actionLoading, setActionLoading] = useState<Record<string, 'start' | 'stop' | 'restart' | null>>({});
+    const [activeLogContainer, setActiveLogContainer] = useState<ContainerEntry | null>(null);
+    const [logs, setLogs] = useState<string>('');
+    const [logsLoading, setLogsLoading] = useState(false);
+    const [copiedLogs, setCopiedLogs] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<{
+        container: ContainerEntry;
+        action: 'start' | 'stop' | 'restart';
+    } | null>(null);
+
+    async function executeAction(container: ContainerEntry, action: 'start' | 'stop' | 'restart') {
+        setActionLoading((prev) => ({ ...prev, [container.id]: action }));
+        try {
+            const res = await fetch(`/api/containers/${encodeURIComponent(container.id)}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nodeId: container.nodeId || '__local__',
+                    action,
+                }),
+            });
+            const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+            if (!res.ok || !data.ok) {
+                throw new Error(data.error || `Failed to ${action} container`);
+            }
+            toast.success(`Container ${container.name} ${action}ed successfully`);
+            await fetchContainers(false);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : `Failed to ${action} container`);
+        } finally {
+            setActionLoading((prev) => ({ ...prev, [container.id]: null }));
+            setConfirmAction(null);
+        }
+    }
+
+    async function fetchLogs(container: ContainerEntry) {
+        setActiveLogContainer(container);
+        setLogsLoading(true);
+        setLogs('');
+        try {
+            const nodeId = container.nodeId || '__local__';
+            const res = await fetch(
+                `/api/containers/${encodeURIComponent(container.id)}/logs?nodeId=${encodeURIComponent(nodeId)}&tail=200`
+            );
+            const data = (await res.json().catch(() => ({}))) as { logs?: string; error?: string };
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to fetch logs');
+            }
+            setLogs(data.logs || 'No logs found for this container.');
+        } catch (err) {
+            setLogs(`Error loading logs: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+            setLogsLoading(false);
+        }
+    }
+
+    function copyLogsToClipboard() {
+        if (!logs) return;
+        void navigator.clipboard.writeText(logs);
+        setCopiedLogs(true);
+        setTimeout(() => setCopiedLogs(false), 2000);
+        toast.success('Logs copied to clipboard');
+    }
 
     async function fetchContainers(showSpinner = true, force = false) {
         if (showSpinner) setScanning(true);
@@ -425,12 +502,14 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
                                             <th className="px-3">Image</th>
                                             <th className="px-3">Status</th>
                                             <th className="px-3">Ports</th>
+                                            <th className="px-3 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filtered.map((container) => {
                                             const running =
                                                 container.state === 'running';
+                                            const loadingAction = actionLoading[container.id];
                                             return (
                                                 <tr
                                                     key={container.id}
@@ -452,7 +531,7 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
                                                                         container.name
                                                                     }
                                                                 </div>
-                                                                <div className="text-[10px] text-muted-foreground">
+                                                                <div className="text-[10px] text-muted-foreground font-mono">
                                                                     {container.id.slice(
                                                                         0,
                                                                         12
@@ -464,7 +543,7 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
                                                     <td className="px-3 py-3 text-white/80">
                                                         {container.source}
                                                     </td>
-                                                    <td className="px-3 py-3 text-white/70">
+                                                    <td className="px-3 py-3 text-white/70 font-mono text-[11px]">
                                                         {container.image}
                                                     </td>
                                                     <td className="px-3 py-3">
@@ -474,7 +553,7 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
                                                                 running
                                                                     ? 'bg-emerald-500/15 text-emerald-300'
                                                                     : 'bg-zinc-500/15 text-zinc-300'
-                                                            )}
+                                                                )}
                                                         >
                                                             {container.status ||
                                                                 container.state}
@@ -482,6 +561,48 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
                                                     </td>
                                                     <td className="px-3 py-3 text-white/70">
                                                         {container.ports || '-'}
+                                                    </td>
+                                                    <td className="px-3 py-3 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <button
+                                                                onClick={() => void fetchLogs(container)}
+                                                                title="View logs"
+                                                                className="inline-flex h-7 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 text-[11px] font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                                                            >
+                                                                <Terminal className="h-3 w-3 text-cyan-300" />
+                                                                Logs
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setConfirmAction({ container, action: 'restart' })}
+                                                                disabled={Boolean(loadingAction)}
+                                                                title="Restart container"
+                                                                className="inline-flex h-7 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 text-[11px] font-medium text-amber-300 transition hover:bg-white/10 disabled:opacity-50"
+                                                            >
+                                                                <RotateCw className={cn("h-3 w-3", loadingAction === 'restart' && "animate-spin")} />
+                                                                Restart
+                                                            </button>
+                                                            {running ? (
+                                                                <button
+                                                                    onClick={() => setConfirmAction({ container, action: 'stop' })}
+                                                                    disabled={Boolean(loadingAction)}
+                                                                    title="Stop container"
+                                                                    className="inline-flex h-7 items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2 text-[11px] font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+                                                                >
+                                                                    <Square className={cn("h-3 w-3", loadingAction === 'stop' && "animate-pulse")} />
+                                                                    Stop
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => void executeAction(container, 'start')}
+                                                                    disabled={Boolean(loadingAction)}
+                                                                    title="Start container"
+                                                                    className="inline-flex h-7 items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 text-[11px] font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+                                                                >
+                                                                    <Play className={cn("h-3 w-3", loadingAction === 'start' && "animate-pulse")} />
+                                                                    Start
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -493,6 +614,91 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Logs Dialog */}
+            <Dialog open={Boolean(activeLogContainer)} onOpenChange={(open) => { if (!open) setActiveLogContainer(null); }}>
+                <DialogContent className="max-w-3xl bg-zinc-950 border-white/10 text-white">
+                    <DialogHeader>
+                        <div className="flex items-center justify-between gap-3 pr-6">
+                            <div className="flex items-center gap-2">
+                                <Terminal className="h-4 w-4 text-cyan-400" />
+                                <DialogTitle className="text-base font-semibold">
+                                    {activeLogContainer?.name} · Logs
+                                </DialogTitle>
+                                <span className="text-xs text-zinc-500 font-mono">({activeLogContainer?.id.slice(0, 12)})</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={copyLogsToClipboard}
+                                    className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-white/10"
+                                >
+                                    {copiedLogs ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
+                                    {copiedLogs ? 'Copied' : 'Copy'}
+                                </button>
+                                <button
+                                    onClick={() => activeLogContainer && void fetchLogs(activeLogContainer)}
+                                    disabled={logsLoading}
+                                    className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300 transition hover:bg-white/10"
+                                >
+                                    <RefreshCw className={cn("h-3.5 w-3.5", logsLoading && "animate-spin")} />
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="mt-2 max-h-[60vh] overflow-auto rounded-xl bg-black/80 p-4 font-mono text-xs text-zinc-200 border border-white/5 leading-relaxed">
+                        {logsLoading ? (
+                            <div className="flex items-center justify-center py-12 text-zinc-500">
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin text-cyan-400" />
+                                Fetching live container logs...
+                            </div>
+                        ) : (
+                            <pre className="whitespace-pre-wrap break-all">{logs || 'No output recorded.'}</pre>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Action Confirmation Dialog */}
+            <Dialog open={Boolean(confirmAction)} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+                <DialogContent className="max-w-md bg-zinc-950 border-white/10 text-white">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-semibold">
+                            Confirm Container Action
+                        </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-zinc-300 mt-2">
+                        Are you sure you want to <strong className="text-white uppercase">{confirmAction?.action}</strong> container{' '}
+                        <code className="text-cyan-300 font-mono">{confirmAction?.container.name}</code> on host{' '}
+                        <strong className="text-white">{confirmAction?.container.source}</strong>?
+                    </p>
+                    <div className="mt-6 flex items-center justify-end gap-2">
+                        <button
+                            onClick={() => setConfirmAction(null)}
+                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/10"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => confirmAction && void executeAction(confirmAction.container, confirmAction.action)}
+                            disabled={confirmAction ? Boolean(actionLoading[confirmAction.container.id]) : false}
+                            className={cn(
+                                "inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-lg transition",
+                                confirmAction?.action === 'stop' ? "bg-red-600 hover:bg-red-500" : "bg-amber-600 hover:bg-amber-500"
+                            )}
+                        >
+                            {confirmAction?.action === 'restart' ? (
+                                <RotateCw className="h-3.5 w-3.5" />
+                            ) : confirmAction?.action === 'stop' ? (
+                                <Square className="h-3.5 w-3.5" />
+                            ) : (
+                                <Play className="h-3.5 w-3.5" />
+                            )}
+                            Confirm {confirmAction?.action}
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

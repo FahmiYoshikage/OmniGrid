@@ -2,6 +2,63 @@
 
 Tanggal: 2026-05-16
 
+## Update Checkpoint 2026-09-17 (Session 22) — Container Remote Operations, Email Notification Channel & Background Job Worker Daemon
+
+### 74. Container Remote Operations & Live Log Viewer (Fleet Docker Management)
+**File baru:**
+- `src/lib/docker/operations.ts`
+- `src/lib/docker/operations.test.ts`
+- `src/app/api/containers/[id]/action/route.ts`
+- `src/app/api/containers/[id]/logs/route.ts`
+
+**File edit:**
+- `src/app/containers/containers-client.tsx`
+
+**Perubahan:**
+- **Docker Remote Execution Safe Core (`src/lib/docker/operations.ts`)**: Implementasi eksekusi aksi kontainer (`start`, `stop`, `restart`) dan pengambilan log (`getContainerLogs`) dengan bounded tail (10–1000 baris). Mendukung eksekusi lokal host maupun remote node via SSH session. Dilengkapi sanitasi ketat regex `CONTAINER_ID_REGEX` (`/^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,128}$/`) untuk mencegah eksploitasi shell injection.
+- **REST Endpoints**:
+  - `POST /api/containers/[id]/action`: Mengontrol siklus hidup kontainer dengan proteksi RBAC `containers.manage` dan rate limiting mutasi.
+  - `GET /api/containers/[id]/logs`: Mengambil live stdout/stderr logs kontainer secara streaming/buffered dengan parameter tail query.
+- **Interactive UI (`src/app/containers/containers-client.tsx`)**:
+  - Kolom tindakan baru (Logs, Restart, Stop, Start) pada setiap kontainer armada.
+  - Modal konfirmasi tindakan kontainer untuk mencegah accidental stop/restart.
+  - Modal live terminal log viewer interaktif dengan fitur auto-refresh, quick-copy ke clipboard, dan status loading visual.
+- **Unit Tests**: Menguji validasi format identifier kontainer dan proteksi karakter berbahaya.
+
+### 75. Email Alerting Channel & Direct Dispatch
+**File edit:**
+- `src/lib/notifications/dispatcher.ts`
+- `src/lib/notifications/dispatcher.test.ts`
+- `src/app/settings/notifications-settings.tsx`
+- `src/app/api/notifications/channels/[id]/test/route.ts`
+
+**Perubahan:**
+- **Email Delivery Dispatcher (`src/lib/notifications/dispatcher.ts`)**: Menambahkan fungsi `sendEmail` menggunakan Nodemailer dengan fallback otomatis ke sistem SMTP (Gmail SMTP via environment) atau kustom SMTP per-channel (host, port, user, pass). Email diformat dengan template HTML responsif bertema dark-glass OmniGrid serta fallback plain text.
+- **Direct Dispatch Engine (`dispatchToChannel`)**: Menambahkan helper pengiriman langsung ke channel spesifik untuk pengetesan alert instan tanpa terhalang filter event list.
+- **Settings UI (`src/app/settings/notifications-settings.tsx`)**: Menambahkan opsi "Email Notification" ke form pendaftaran channel, field alamat email penerima, dan form opsional konfigurasi SMTP kustom dengan masking password.
+- **Test Channel Route**: Memperbarui route `POST /api/notifications/channels/[id]/test` menggunakan `dispatchToChannel`.
+- **Unit Tests**: Menambahkan test masking kredensial email channel, validasi format recipient, audit trail delivery log, dan penanganan kegagalan delivery.
+
+### 76. Background Job Worker Daemon & Realtime Operations Streaming
+**File edit:**
+- `src/lib/jobs/repository.ts`
+- `src/lib/jobs/worker.ts`
+- `src/lib/jobs/worker.test.ts`
+- `src/lib/jobs/handlers.ts`
+- `server/index.ts`
+
+**Perubahan:**
+- **Multi-Tenant Daemon Mode (`src/lib/jobs/repository.ts` & `src/lib/jobs/worker.ts`)**: Memperluas `jobsRepo` dengan metode `acquireLeaseGlobal` dan memperbarui `createJobWorker` sehingga dapat berjalan secara multi-workspace (global worker) jika `workspaceId` tidak ditentukan.
+- **Default Job Handlers (`src/lib/jobs/handlers.ts`)**: Mendaftarkan handler bawaan `backup.database` (menjalankan hot database backup non-blocking) dan `system.ping` (diagnostic test job).
+- **Server Integration (`server/index.ts`)**: Menginisialisasi daemon `jobWorker` saat HTTP server listening, mengalirkan lifecycle event (`leased`, `running`, `succeeded`, `failed`, `cancelled`, `recovered`) secara realtime ke Socket.IO `/operations` namespace, dan mengintegrasikannya ke proses graceful shutdown (`shutdown` handler pada `SIGINT`/`SIGTERM`).
+- **Unit Tests**: Menambahkan verifikasi pemrosesan paralel multi-workspace dalam global daemon mode.
+
+**Verifikasi:**
+- Vitest: 17 test files passed, 72 tests passed (100% green).
+- Typecheck: `tsc --noEmit` berhasil (0 TypeScript errors).
+- ESLint: `npm run lint` berhasil (0 warnings/errors).
+- Build: `npm run build` berhasil (46 routes static & dynamic ter-generate sempurna).
+
 ## Update Checkpoint 2026-09-17 (Session 21) — Production Readiness, Technical SEO, Tracking, Anti-Spam & Backup Engine
 
 ### 71. SEO, Structured Schemas, Breadcrumbs & Indexing Governance
