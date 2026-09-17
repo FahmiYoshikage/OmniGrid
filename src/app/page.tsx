@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { LandingPage } from "./landing-page";
 import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
+import { isSetupNeeded } from '@/lib/setup/status';
 
 export const dynamic = "force-dynamic";
 
@@ -13,5 +14,6 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  return <LandingPage />;
+  const setupNeeded = isSetupNeeded();
+  return <LandingPage setupNeeded={setupNeeded} />;
 }

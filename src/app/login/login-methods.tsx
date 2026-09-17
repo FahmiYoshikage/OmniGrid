@@ -2,13 +2,22 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Mail, Send } from "lucide-react";
+import { KeyRound, Lock, Mail, RefreshCw, Send } from "lucide-react";
 import type { AuthAvailability } from "@/lib/auth/availability";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function LoginMethods({ availability, invitationToken }: { availability: AuthAvailability; invitationToken?: string }) {
   const [loadingProvider, setLoadingProvider] = useState<"github" | "google" | null>(null);
+  
+  // Password Login State
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginHoneypot, setLoginHoneypot] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Email Magic Link State
   const [email, setEmail] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -17,6 +26,47 @@ export function LoginMethods({ availability, invitationToken }: { availability: 
 
   function rememberInvitation() {
     if (invitationToken) window.sessionStorage.setItem("omnigrid_pending_invitation", invitationToken);
+  }
+
+  async function handlePasswordLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!loginIdentifier.trim() || !loginPassword) {
+      setLoginError("Please enter your username/email and password.");
+      return;
+    }
+    setLoginError(null);
+    setLoginLoading(true);
+    rememberInvitation();
+
+    try {
+      const res = await fetch("/api/auth/password/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: loginIdentifier.trim(),
+          password: loginPassword,
+          _gotcha: loginHoneypot,
+        }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        redirect?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Incorrect username/email or password.");
+      }
+
+      toast.success("Signed in successfully. Launching dashboard...");
+      window.location.href = data.redirect || "/dashboard";
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Sign-in failed.";
+      setLoginError(msg);
+      toast.error(msg);
+      setLoginLoading(false);
+    }
   }
 
   async function requestEmailLink(event: React.FormEvent<HTMLFormElement>) {
@@ -50,8 +100,81 @@ export function LoginMethods({ availability, invitationToken }: { availability: 
     }
   }
 
+  const hasOAuthOrEmail = availability.github || availability.google || availability.email;
+
   return (
     <div className="space-y-4">
+      {/* Primary Local Password Authentication */}
+      <form onSubmit={handlePasswordLogin} className="space-y-3 rounded-2xl border border-white/10 bg-black/30 p-5 shadow-inner">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <KeyRound className="h-4 w-4 text-cyan-300" />
+          Admin & Local Sign in
+        </div>
+        <input
+          type="text"
+          name="_gotcha"
+          value={loginHoneypot}
+          onChange={(e) => setLoginHoneypot(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          className="hidden"
+          aria-hidden="true"
+        />
+        <div className="space-y-2.5">
+          <Input
+            type="text"
+            value={loginIdentifier}
+            onChange={(event) => {
+              setLoginIdentifier(event.target.value);
+              if (loginError) setLoginError(null);
+            }}
+            placeholder="Username or Email (e.g. admin)"
+            className="h-10 bg-white/[0.04] text-white placeholder-zinc-500"
+            required
+            disabled={loginLoading}
+          />
+          <Input
+            type="password"
+            value={loginPassword}
+            onChange={(event) => {
+              setLoginPassword(event.target.value);
+              if (loginError) setLoginError(null);
+            }}
+            placeholder="Password"
+            className="h-10 bg-white/[0.04] text-white placeholder-zinc-500"
+            required
+            disabled={loginLoading}
+          />
+        </div>
+        {loginError ? <p className="text-xs text-red-400">{loginError}</p> : null}
+        <Button
+          type="submit"
+          className="w-full bg-cyan-400 font-semibold text-slate-950 hover:bg-cyan-300 transition shadow-md shadow-cyan-400/20"
+          disabled={loginLoading || !loginIdentifier.trim() || !loginPassword}
+        >
+          {loginLoading ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Verifying credentials...
+            </>
+          ) : (
+            <>
+              <Lock className="mr-2 h-4 w-4" />
+              Sign in
+            </>
+          )}
+        </Button>
+      </form>
+
+      {hasOAuthOrEmail && (
+        <div className="relative my-4 flex items-center justify-center">
+          <div className="w-full border-t border-white/10"></div>
+          <span className="absolute bg-slate-950 px-3 text-[10px] uppercase tracking-wider text-muted-foreground">
+            or use identity provider
+          </span>
+        </div>
+      )}
+
       {availability.github ? (
         <OAuthButton
           href="/api/auth/github"
@@ -116,12 +239,6 @@ export function LoginMethods({ availability, invitationToken }: { availability: 
           </p>
           {emailSent ? <p className="text-xs text-emerald-200/80">Magic link sent to {emailSent}.</p> : null}
         </form>
-      ) : null}
-
-      {!availability.github && !availability.google && !availability.email ? (
-        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          No login method is configured yet. Add GitHub, Google, or Gmail SMTP settings in the OmniGrid Network Architecture platform environment.
-        </div>
       ) : null}
     </div>
   );

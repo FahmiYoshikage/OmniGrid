@@ -108,13 +108,26 @@ const CAPABILITIES = [
     },
 ];
 
-export function LandingPage() {
+export function LandingPage({ setupNeeded = false }: { setupNeeded?: boolean } = {}) {
     const softwareSchema = getSoftwareApplicationSchema();
     const orgSchema = getOrganizationSchema();
     const localSchema = getLocalBusinessSchema();
 
     return (
         <main className="min-h-screen overflow-hidden bg-zinc-950 text-zinc-50">
+            {setupNeeded && (
+                <div className="relative z-50 flex flex-wrap items-center justify-center gap-2 border-b border-cyan-400/30 bg-gradient-to-r from-cyan-950 via-cyan-900/70 to-emerald-950 px-4 py-2.5 text-center text-xs sm:text-sm text-cyan-100">
+                    <span className="flex h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="font-semibold text-white">First-time deployment detected:</span>
+                    <span>Complete the initial setup wizard to configure your administrator account.</span>
+                    <Link
+                        href="/setup"
+                        className="ml-1.5 inline-flex items-center gap-1 rounded-md bg-cyan-400 px-2.5 py-0.5 text-xs font-bold text-slate-950 transition hover:bg-cyan-300"
+                    >
+                        Start Setup &rarr;
+                    </Link>
+                </div>
+            )}
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
@@ -169,11 +182,11 @@ export function LandingPage() {
                                 Docs
                             </TrackableLink>
                             <TrackableLink
-                                href="/login"
-                                ctaName="nav_sign_in"
+                                href={setupNeeded ? "/setup" : "/login"}
+                                ctaName={setupNeeded ? "nav_setup" : "nav_sign_in"}
                                 className="inline-flex h-10 items-center rounded-md bg-zinc-50 px-3 text-sm font-bold text-zinc-950 transition hover:bg-lime-200"
                             >
-                                Sign in
+                                {setupNeeded ? "Initial Setup" : "Sign in"}
                             </TrackableLink>
                         </div>
                     </nav>
@@ -214,11 +227,11 @@ export function LandingPage() {
 
                             <div className="mt-7 flex flex-wrap items-center gap-3">
                                 <TrackableLink
-                                    href="/login"
-                                    ctaName="hero_open_control_plane"
+                                    href={setupNeeded ? "/setup" : "/login"}
+                                    ctaName={setupNeeded ? "hero_run_initial_setup" : "hero_open_control_plane"}
                                     className="inline-flex h-12 items-center gap-2 rounded-md bg-lime-300 px-5 text-sm font-black text-zinc-950 transition hover:bg-lime-200"
                                 >
-                                    Open control plane
+                                    {setupNeeded ? "Run Initial Setup" : "Open control plane"}
                                     <ArrowRight className="h-4 w-4" />
                                 </TrackableLink>
                                 <TrackableLink

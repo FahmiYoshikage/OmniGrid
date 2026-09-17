@@ -2,6 +2,55 @@
 
 Tanggal: 2026-05-16
 
+## Update Checkpoint 2026-09-17 (Session 23) — First-Time Initial Setup Wizard & Standalone Password Authentication
+
+### 77. Initial Setup Wizard & System Onboarding (`/setup`)
+**File baru:**
+- `src/lib/db/migrations/015_auth_passwords_and_setup.sql`
+- `src/lib/setup/status.ts`
+- `src/lib/setup/status.test.ts`
+- `src/app/setup/page.tsx`
+- `src/app/setup/setup-wizard.tsx`
+- `src/app/api/setup/status/route.ts`
+- `src/app/api/setup/initialize/route.ts`
+
+**File edit:**
+- `src/app/page.tsx`
+- `src/app/landing-page.tsx`
+- `src/app/login/page.tsx`
+
+**Perubahan:**
+- **Status Setup Otomatis (`src/lib/setup/status.ts`)**: Fungsi `isSetupNeeded()` yang mendeteksi apakah instance OmniGrid baru saja di-deploy (tabel `users` kosong atau belum ada owner terdaftar).
+- **Preflight Check Engine**: Memeriksa kesiapan lingkungan secara real-time: runtime Node.js (v20+), integritas database SQLite (`PRAGMA integrity_check`), ketersediaan master key enkripsi AES-256-GCM, serta deteksi daemon Docker (`/var/run/docker.sock`) dan Tailscale.
+- **Interactive Multi-Step Wizard (`/setup`)**:
+  - Step 1 (Preflight Check): Indikator visual kesiapan server, database, dan kriptografi.
+  - Step 2 (Admin Account): Form pembuatan akun root administrator (Username, Display Name, Email opsional, Password minimal 8 karakter).
+  - Step 3 (Fleet & Workspace): Penamaan workspace utama, integrasi opsional Tailscale (Tailnet & Auth Key), dan Cloudflare Tunnel token.
+  - Step 4 (Initialization): Menginisialisasi user, workspace, role `owner`, memvalidasi password, mengunci status setup, dan membuat sesi login otomatis langsung ke `/dashboard`.
+- **Setup Lockdown Protection**: `POST /api/setup/initialize` dan halaman `/setup` otomatis menolak dan memblokir akses jika setup telah diselesaikan.
+- **Smart Onboarding Redirection**: Jika instance belum di-setup, navigasi ke `/login` otomatis dialihkan ke `/setup`. Pada landing page (`/`), banner notifikasi first-time deployment dan tombol CTA hero langsung mengarahkan pengguna ke initial setup.
+
+### 78. Standalone Local Password Authentication (`/api/auth/password/login`)
+**File baru:**
+- `src/lib/auth/passwords.ts`
+- `src/lib/auth/passwords.test.ts`
+- `src/app/api/auth/password/login/route.ts`
+
+**File edit:**
+- `src/app/login/login-methods.tsx`
+
+**Perubahan:**
+- **Zero-Dependency Password Crypto (`src/lib/auth/passwords.ts`)**: Implementasi hashing kata sandi berbasis standard library `node:crypto` menggunakan algoritma memori-keras `scryptSync` dengan salt acak 16 byte, panjang kunci 64 byte, serta verifikasi timing-safe (`timingSafeEqual`) untuk menangkal side-channel attacks.
+- **Tabel Kredensial Mandiri (`auth_passwords`)**: Migration 015 menyediakan tabel khusus untuk hash password tanpa konflik dengan penyedia identitas OAuth eksternal.
+- **Password Sign-in Endpoint (`POST /api/auth/password/login`)**: Mendukung login menggunakan username maupun email dengan proteksi honeypot bot trap (`_gotcha`) dan pembatasan frekuensi percobaan (rate limiting 5 kali per menit).
+- **UI Login Universal (`src/app/login/login-methods.tsx`)**: Form login password disajikan sebagai metode autentikasi utama mandiri (self-contained), memungkinkan siapa pun yang menjalankan OmniGrid di server privat/lokal untuk langsung login tanpa perlu konfigurasi OAuth GitHub/Google atau server SMTP eksternal.
+
+**Verifikasi:**
+- Vitest: 19 test files passed, 76 tests passed (100% green).
+- Typecheck: `tsc --noEmit` berhasil (0 TypeScript errors).
+- ESLint: `npm run lint` berhasil (0 warnings/errors).
+- Build: `npm run build` berhasil (49 routes static & dynamic ter-generate sempurna).
+
 ## Update Checkpoint 2026-09-17 (Session 22) — Container Remote Operations, Email Notification Channel & Background Job Worker Daemon
 
 ### 74. Container Remote Operations & Live Log Viewer (Fleet Docker Management)
