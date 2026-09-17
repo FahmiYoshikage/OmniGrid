@@ -17,7 +17,9 @@ import {
     Workflow,
 } from 'lucide-react';
 import { CopyCommandButton } from './copy-command-button';
-import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
+import { TrackableLink } from '@/components/trackable-cta';
+import { WhatsAppButton } from '@/components/whatsapp-button';
+import { getLocalBusinessSchema, getOrganizationSchema, getSoftwareApplicationSchema } from '@/lib/seo';
 
 const BRAND_NAME = 'OmniGrid Network Architecture';
 const BOOTSTRAP_CMD =
@@ -107,21 +109,9 @@ const CAPABILITIES = [
 ];
 
 export function LandingPage() {
-    const structuredData = {
-        '@context': 'https://schema.org',
-        '@type': 'SoftwareApplication',
-        name: SITE_NAME,
-        applicationCategory: 'DeveloperApplication',
-        operatingSystem: 'Web',
-        url: absoluteUrl('/'),
-        image: absoluteUrl('/logo.png'),
-        description: SITE_DESCRIPTION,
-        offers: {
-            '@type': 'Offer',
-            price: '0',
-            priceCurrency: 'USD',
-        },
-    };
+    const softwareSchema = getSoftwareApplicationSchema();
+    const orgSchema = getOrganizationSchema();
+    const localSchema = getLocalBusinessSchema();
 
     return (
         <main className="min-h-screen overflow-hidden bg-zinc-950 text-zinc-50">
@@ -129,7 +119,21 @@ export function LandingPage() {
                 type="application/ld+json"
                 suppressHydrationWarning
                 dangerouslySetInnerHTML={{
-                    __html: JSON.stringify(structuredData),
+                    __html: JSON.stringify(softwareSchema),
+                }}
+            />
+            <script
+                type="application/ld+json"
+                suppressHydrationWarning
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(orgSchema),
+                }}
+            />
+            <script
+                type="application/ld+json"
+                suppressHydrationWarning
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(localSchema),
                 }}
             />
             <section className="relative isolate min-h-screen overflow-hidden">
@@ -156,18 +160,21 @@ export function LandingPage() {
                             </div>
                         </Link>
                         <div className="flex shrink-0 items-center gap-2">
-                            <Link
+                            <WhatsAppButton source="landing_nav" label="Support" className="hidden sm:inline-flex" />
+                            <TrackableLink
                                 href="/docs"
+                                ctaName="nav_docs"
                                 className="inline-flex h-10 items-center rounded-md border border-white/12 px-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"
                             >
                                 Docs
-                            </Link>
-                            <Link
+                            </TrackableLink>
+                            <TrackableLink
                                 href="/login"
+                                ctaName="nav_sign_in"
                                 className="inline-flex h-10 items-center rounded-md bg-zinc-50 px-3 text-sm font-bold text-zinc-950 transition hover:bg-lime-200"
                             >
                                 Sign in
-                            </Link>
+                            </TrackableLink>
                         </div>
                     </nav>
 
@@ -205,20 +212,23 @@ export function LandingPage() {
                                 </pre>
                             </div>
 
-                            <div className="mt-7 flex flex-wrap gap-3">
-                                <Link
+                            <div className="mt-7 flex flex-wrap items-center gap-3">
+                                <TrackableLink
                                     href="/login"
+                                    ctaName="hero_open_control_plane"
                                     className="inline-flex h-12 items-center gap-2 rounded-md bg-lime-300 px-5 text-sm font-black text-zinc-950 transition hover:bg-lime-200"
                                 >
                                     Open control plane
                                     <ArrowRight className="h-4 w-4" />
-                                </Link>
-                                <Link
+                                </TrackableLink>
+                                <TrackableLink
                                     href="/docs#bootstrap"
+                                    ctaName="hero_read_bootstrap_docs"
                                     className="inline-flex h-12 items-center gap-2 rounded-md border border-white/12 bg-white/[0.04] px-5 text-sm font-bold text-white transition hover:bg-white/10"
                                 >
                                     Read bootstrap docs
-                                </Link>
+                                </TrackableLink>
+                                <WhatsAppButton source="hero_whatsapp" label="WhatsApp" />
                             </div>
                         </div>
 
@@ -418,20 +428,23 @@ export function LandingPage() {
                             Cloudflare, auth, or deployment details.
                         </p>
                     </div>
-                    <div className="flex flex-wrap gap-3">
-                        <Link
+                    <div className="flex flex-wrap items-center gap-3">
+                        <TrackableLink
                             href="/login"
+                            ctaName="bottom_sign_in"
                             className="inline-flex h-12 items-center gap-2 rounded-md bg-lime-300 px-5 text-sm font-black text-zinc-950 transition hover:bg-lime-200"
                         >
                             Sign in
                             <ArrowRight className="h-4 w-4" />
-                        </Link>
-                        <Link
+                        </TrackableLink>
+                        <TrackableLink
                             href="/docs"
+                            ctaName="bottom_docs"
                             className="inline-flex h-12 items-center rounded-md border border-white/12 px-5 text-sm font-bold text-white transition hover:bg-white/10"
                         >
                             Documentation
-                        </Link>
+                        </TrackableLink>
+                        <WhatsAppButton source="bottom_cta" label="WhatsApp Support" />
                     </div>
                 </div>
 
@@ -452,6 +465,7 @@ export function LandingPage() {
                     </Link>
                 </footer>
             </section>
+            <WhatsAppButton floating source="landing_floating" />
         </main>
     );
 }

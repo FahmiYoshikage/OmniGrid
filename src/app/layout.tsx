@@ -6,7 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { getSessionUser } from '@/lib/auth/session';
-import { absoluteUrl, getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
+import { absoluteUrl, getLocalBusinessSchema, getOrganizationSchema, getSiteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -39,6 +39,14 @@ export const metadata: Metadata = {
     authors: [{ name: SITE_NAME }],
     creator: SITE_NAME,
     publisher: SITE_NAME,
+    alternates: {
+        canonical: absoluteUrl('/'),
+    },
+    verification: {
+        google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || process.env.GOOGLE_SITE_VERIFICATION || undefined,
+        yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION || process.env.YANDEX_VERIFICATION || undefined,
+        yahoo: process.env.NEXT_PUBLIC_YAHOO_VERIFICATION || undefined,
+    },
     openGraph: {
         type: 'website',
         locale: 'en_US',
@@ -74,9 +82,14 @@ export const metadata: Metadata = {
     },
     category: 'technology',
     icons: {
-        icon: '/logo.png',
+        icon: [
+            { url: '/favicon.ico', sizes: 'any' },
+            { url: '/logo.svg', type: 'image/svg+xml' },
+        ],
+        shortcut: '/favicon.ico',
         apple: '/logo.png',
     },
+    manifest: '/site.webmanifest',
 };
 
 export default async function RootLayout({
@@ -103,11 +116,30 @@ export default async function RootLayout({
         // Session lookup may fail during build or when DB is not ready
     }
 
+    const orgSchema = getOrganizationSchema();
+    const localBusinessSchema = getLocalBusinessSchema();
+
     return (
         <html
             lang="en"
             className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
         >
+            <head>
+                <script
+                    type="application/ld+json"
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify(orgSchema),
+                    }}
+                />
+                <script
+                    type="application/ld+json"
+                    suppressHydrationWarning
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify(localBusinessSchema),
+                    }}
+                />
+            </head>
             <body className="min-h-full flex flex-col">
                 <TooltipProvider delay={150}>
                     <AppShell user={user}>{children}</AppShell>

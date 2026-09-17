@@ -5,7 +5,16 @@ export default function robots(): MetadataRoute.Robots {
     return {
         rules: {
             userAgent: '*',
-            allow: ['/', '/docs', '/privacy-policy', '/terms', '/logo.png', '/logo.svg'],
+            allow: [
+                '/',
+                '/docs',
+                '/privacy-policy',
+                '/terms',
+                '/logo.png',
+                '/logo.svg',
+                '/favicon.ico',
+                '/site.webmanifest',
+            ],
             disallow: [
                 '/api/',
                 '/auth/',
@@ -19,6 +28,10 @@ export default function robots(): MetadataRoute.Robots {
                 '/uptime',
                 '/settings',
                 '/login',
+                '/runbooks',
+                '/audit',
+                '/wol',
+                '/invitations/',
             ],
         },
         sitemap: absoluteUrl('/sitemap.xml'),

@@ -19,6 +19,8 @@ import {
     TerminalSquare,
 } from 'lucide-react';
 import { CopyCommandButton } from '../copy-command-button';
+import { Breadcrumbs } from '@/components/breadcrumbs';
+import { WhatsAppButton } from '@/components/whatsapp-button';
 import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from '@/lib/seo';
 
 const BRAND_NAME = 'OmniGrid Network Architecture';
@@ -258,6 +260,10 @@ export default function DocsPage() {
                 </aside>
 
                 <div className="min-w-0">
+                    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                        <Breadcrumbs items={[{ label: 'Documentation', href: '/docs' }]} />
+                        <WhatsAppButton source="docs_top" label="Ask Support" />
+                    </div>
                     <section
                         id="start-here"
                         className="border border-white/10 bg-white/[0.035] p-6 sm:p-8"
@@ -365,7 +371,8 @@ export default function DocsPage() {
                         </div>
                     </section>
 
-                    <section id="quickstart" className="mt-10">
+                    <section id="quickstart" className="mt-10 scroll-mt-20">
+                        <div id="bootstrap" className="scroll-mt-24" />
                         <SectionHeader
                             eyebrow="Quickstart"
                             title="From empty repo to first managed node"
@@ -518,6 +525,16 @@ export default function DocsPage() {
                                     and rotate workspace integration tokens from
                                     Settings when access changes.
                                 </p>
+                                <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs text-lime-100/90">
+                                    <div className="rounded-md border border-lime-300/30 bg-black/20 p-3">
+                                        <div className="font-bold text-white">Google Search Console & Sitemap</div>
+                                        <p className="mt-1 text-zinc-300">Set <code>GOOGLE_SITE_VERIFICATION</code> in your environment, submit <code>/sitemap.xml</code> in GSC, and monitor indexing coverage.</p>
+                                    </div>
+                                    <div className="rounded-md border border-lime-300/30 bg-black/20 p-3">
+                                        <div className="font-bold text-white">Hot Database Backups</div>
+                                        <p className="mt-1 text-zinc-300">Run <code>npm run backup</code> or call <code>POST /api/backup</code> to take zero-downtime hot snapshots with SHA256 integrity verification.</p>
+                                    </div>
+                                </div>
                             </div>
                             <Link
                                 href="/login"
@@ -530,6 +547,7 @@ export default function DocsPage() {
                     </section>
                 </div>
             </div>
+            <WhatsAppButton floating source="docs_floating" />
         </main>
     );
 }

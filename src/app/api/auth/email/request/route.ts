@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 const EmailRequestSchema = z.object({
   email: z.string().trim().email(),
   intent: z.enum(["login", "link"]).optional(),
+  _gotcha: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -21,6 +22,11 @@ export async function POST(req: Request) {
   const parsed = EmailRequestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
+  }
+
+  // Anti-Spam: If honeypot is filled by bot, silently return success without sending email
+  if (parsed.data._gotcha && parsed.data._gotcha.trim().length > 0) {
+    return NextResponse.json({ ok: true });
   }
 
   const intent = parsed.data.intent ?? "login";

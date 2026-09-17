@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 export function LoginMethods({ availability, invitationToken }: { availability: AuthAvailability; invitationToken?: string }) {
   const [loadingProvider, setLoadingProvider] = useState<"github" | "google" | null>(null);
   const [email, setEmail] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState<string | null>(null);
 
@@ -19,6 +21,12 @@ export function LoginMethods({ availability, invitationToken }: { availability: 
 
   async function requestEmailLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+    setEmailError(null);
     setSendingEmail(true);
     setEmailSent(null);
     rememberInvitation();
@@ -27,13 +35,13 @@ export function LoginMethods({ availability, invitationToken }: { availability: 
       const res = await fetch("/api/auth/email/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, intent: "login" }),
+        body: JSON.stringify({ email: trimmed, intent: "login", _gotcha: honeypot }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         throw new Error(data.error || "Failed to send sign-in link.");
       }
-      setEmailSent(email);
+      setEmailSent(trimmed);
       toast.success("Sign-in link sent. Check your email inbox.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to send sign-in link.");
@@ -74,15 +82,31 @@ export function LoginMethods({ availability, invitationToken }: { availability: 
             <Mail className="h-4 w-4 text-cyan-200" />
             Sign in with email link
           </div>
+          <input
+            type="text"
+            name="_gotcha"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+            className="hidden"
+            aria-hidden="true"
+          />
           <Input
             type="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              if (emailError) setEmailError(null);
+            }}
             placeholder="you@gmail.com"
             className="h-11 bg-white/[0.04]"
             required
             disabled={sendingEmail}
           />
+          {emailError ? (
+            <p className="text-xs text-red-400">{emailError}</p>
+          ) : null}
           <Button type="submit" className="w-full" disabled={sendingEmail || !email.trim()}>
             {sendingEmail ? <Send className="mr-2 h-4 w-4 animate-pulse" /> : <Send className="mr-2 h-4 w-4" />}
             {sendingEmail ? "Sending secure link..." : "Send sign-in link"}

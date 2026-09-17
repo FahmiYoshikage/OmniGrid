@@ -12,6 +12,7 @@
     "test": "vitest run",
     "db:migrate": "node --env-file=.env.local --import tsx src/lib/db/migrate.ts",
     "db:smoke": "node --env-file=.env.local --import tsx scripts/smoke.ts",
+    "backup": "node --env-file=.env.local --import tsx scripts/backup.ts",
     "keygen": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
   "dependencies": {

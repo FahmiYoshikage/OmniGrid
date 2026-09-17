@@ -2,6 +2,77 @@
 
 Tanggal: 2026-05-16
 
+## Update Checkpoint 2026-09-17 (Session 21) — Production Readiness, Technical SEO, Tracking, Anti-Spam & Backup Engine
+
+### 71. SEO, Structured Schemas, Breadcrumbs & Indexing Governance
+**File baru:**
+- `src/components/breadcrumbs.tsx`
+- `src/lib/seo.test.ts`
+- `public/site.webmanifest`
+
+**File edit:**
+- `src/lib/seo.ts`
+- `src/app/layout.tsx`
+- `src/app/robots.ts`
+- `src/app/sitemap.ts`
+- `src/app/landing-page.tsx`
+- `src/app/docs/page.tsx`
+- `src/app/terms/page.tsx`
+- `src/app/privacy-policy/page.tsx`
+
+**Perubahan:**
+- **Sitemap.xml**: Mengonfigurasi sitemap dinamis dengan kalkulasi lastModified, changeFrequency, dan bobot prioritas halaman.
+- **Robots.txt**: Mengatur whitelist aset publik (`/`, `/docs`, `/terms`, `/privacy-policy`, favicon, manifest) dan blacklist seluruh route private (`/dashboard`, `/nodes`, `/terminal`, `/settings`, `/runbooks`, `/audit`, `/wol`, `/api/`).
+- **Google Search Console**: Menambahkan meta tag verifikasi search engine via `GOOGLE_SITE_VERIFICATION` di root layout.
+- **Canonical URLs**: Mengonfigurasi canonical tag standar pada root layout dan per-page canonical tags pada semua halaman publik.
+- **Structured Data (JSON-LD)**: Mengimplementasikan schema `Organization`, `ProfessionalService` (Local Business), `SoftwareApplication`, dan `BreadcrumbList`.
+- **Breadcrumbs Component**: Membuat komponen navigasi breadcrumbs ramah aksesibilitas dengan dukungan injeksi schema.org di `/docs`, `/terms`, dan `/privacy-policy`.
+- **Broken Links Fix**: Memperbaiki anchor link `/docs#bootstrap` pada landing page dan menambahkan anchor `id="bootstrap"` pada Quickstart docs.
+
+### 72. Conversion Tracking (CTA & WhatsApp) & Anti-Spam Form Protection
+**File baru:**
+- `src/lib/tracking.ts`
+- `src/lib/tracking.test.ts`
+- `src/components/trackable-cta.tsx`
+- `src/components/whatsapp-button.tsx`
+
+**File edit:**
+- `src/app/landing-page.tsx`
+- `src/app/docs/page.tsx`
+- `src/app/login/login-methods.tsx`
+- `src/app/api/auth/email/request/route.ts`
+
+**Perubahan:**
+- **Tracking Engine**: Modul pelacak event zero-dependency yang interoperabel dengan Google Tag Manager (`dataLayer`), Google Analytics (`gtag`), dan browser custom events (`omnigrid:track`).
+- **Track Klik CTA**: Komponen `TrackableLink` dan `TrackableButton` dengan event `cta_click` pada tombol utama hero, docs, dan login.
+- **Track Klik WhatsApp**: Komponen `WhatsAppButton` (floating & inline) dengan tautan chat otomatis dan event tracking `whatsapp_click`.
+- **Validasi Form & Anti-Spam Honeypot**: Menambahkan validasi format email client-side serta jebakan honeypot `_gotcha` pada form login email magic link. Server secara silent mengabaikan submission jika bot mengisi field honeypot tersebut.
+
+### 73. Custom 404, Favicon Suite, Hot Database Backup & E2E Safetynet
+**File baru:**
+- `src/app/not-found.tsx`
+- `src/lib/backup/backup.ts`
+- `src/lib/backup/backup.test.ts`
+- `src/app/api/backup/route.ts`
+- `scripts/backup.ts`
+- `src/lib/safetynet/device-and-e2e.test.ts`
+- `public/favicon.ico`
+
+**File edit:**
+- `package.json`
+
+**Perubahan:**
+- **Custom 404**: Halaman Not Found modern dengan dark glassmorphic styling, navigasi kembali (Home, Docs, Dashboard, Terminal), dan header `robots: { index: false, follow: false }`.
+- **Favicon Suite**: Menghubungkan favicon.ico, logo.svg, logo.png, apple-touch-icon, serta `site.webmanifest` pada root layout dan menyalin `favicon.ico` ke `public/`.
+- **Hot Database Backup Engine**: Utility backup online SQLite non-blocking menggunakan native `db.backup()`, verifikasi integritas `PRAGMA integrity_check`, kalkulasi checksum SHA256, pembuatan `manifest.json`, retensi file otomatis, CLI script `npm run backup`, serta REST API `POST /api/backup`.
+- **Device & E2E Safetynet Tests**: Test suite pengujian responsivitas perangkat, validasi metadata 404, audit zero broken links, dan pengujian jebakan bot spam.
+
+**Verifikasi:**
+- Vitest: 16 test files passed, 67 tests passed (100% green).
+- Typecheck: `tsc --noEmit` berhasil (0 TypeScript errors).
+- ESLint: `eslint` berhasil (0 warnings/errors).
+- Build: `next build` berhasil (46 routes ter-generate sempurna).
+
 ## Update Checkpoint 2026-09-17 (Session 20) — Full Master Roadmap Execution (Milestones 2, 3, 4, 5)
 
 ### 67. Zero Trust Fleet Topology Overhaul (Milestone 5)
