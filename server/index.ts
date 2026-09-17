@@ -14,6 +14,7 @@ import next from "next";
 import { Server as IOServer } from "socket.io";
 import { migrate } from "@/lib/db/migrate";
 import { attachSshNamespace } from "@/lib/ssh/socket";
+import { attachOperationsNamespace } from "@/lib/operations/socket";
 import { closeAll as closeAllSsh } from "@/lib/ssh/manager";
 import { startUptimeChecker, stopUptimeChecker } from "@/lib/uptime/checker";
 import { getEnv } from "@/lib/env";
@@ -44,6 +45,10 @@ async function main() {
     maxHttpBufferSize: 1e6,
   });
   attachSshNamespace(io);
+  const operations = attachOperationsNamespace(io);
+
+  // Pass this publisher to job producers. They call publish({ workspaceId, jobId, type, payload }).
+  void operations;
 
   let shuttingDown = false;
 

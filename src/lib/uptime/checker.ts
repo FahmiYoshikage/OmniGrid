@@ -21,6 +21,7 @@ import { promisify } from "node:util";
 import { uptimeRepo, type UptimeMonitorRow } from "@/lib/db/repos/uptime";
 import { parseHttpUrl, parseTcpTarget, resolveSafeHost, validateMonitorTarget } from "@/lib/uptime/validation";
 import { connect as tlsConnect } from "node:tls";
+import { dispatchNotification } from "@/lib/notifications/dispatcher";
 
 const execFileAsync = promisify(execFile);
 
@@ -280,6 +281,19 @@ function handleCheckResult(monitor: UptimeMonitorRow, result: CheckResult): void
       console.log(
         `[uptime] ⚠ INCIDENT OPENED: ${monitor.name} (${monitor.target}) — ${result.error ?? "check failed"}`,
       );
+      void dispatchNotification(monitor.workspace_id, {
+        type: "uptime.incident",
+        title: `Service Outage: ${monitor.name}`,
+        message: `Endpoint ${monitor.target} failed health check: ${result.error ?? `Status ${result.statusCode ?? "error"}`}`,
+        severity: "critical",
+        details: {
+          Monitor: monitor.name,
+          Target: monitor.target,
+          Status: result.statusCode ?? "Connection Error",
+          Error: result.error ?? "Health check failed",
+          Time: new Date().toISOString(),
+        },
+      });
     }
   } else if (activeIncident) {
     // Was down, now up — resolve incident
@@ -287,6 +301,20 @@ function handleCheckResult(monitor: UptimeMonitorRow, result: CheckResult): void
     console.log(
       `[uptime] ✓ INCIDENT RESOLVED: ${monitor.name} (${monitor.target}) — back up after ${activeIncident.checks_failed} failed checks`,
     );
+    void dispatchNotification(monitor.workspace_id, {
+      type: "uptime.incident",
+      title: `Service Recovered: ${monitor.name}`,
+      message: `Endpoint ${monitor.target} is back online after ${activeIncident.checks_failed} failed checks.`,
+      severity: "resolved",
+      details: {
+        Monitor: monitor.name,
+        Target: monitor.target,
+        Latency: `${result.latencyMs}ms`,
+        FailedChecks: activeIncident.checks_failed,
+        Duration: `${Math.round((Date.now() - activeIncident.started_at) / 1000)}s`,
+        Time: new Date().toISOString(),
+      },
+    });
   }
 }
 

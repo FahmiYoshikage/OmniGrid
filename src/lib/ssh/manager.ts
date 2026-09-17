@@ -8,6 +8,8 @@ import { credentialsRepo } from "@/lib/db/repos/credentials";
 import { auditRepo } from "@/lib/db/repos/audit";
 import { runbooksRepo } from "@/lib/db/repos/runbooks";
 import { createHostVerifier } from "@/lib/ssh/host-verifier";
+import { jobsRepo } from "@/lib/jobs/repository";
+import { getOperationsPublisher } from "@/lib/operations/socket";
 import type { SshStatusEvent, SshStatusCode } from "@/lib/ssh/status";
 
 /**
@@ -360,6 +362,16 @@ function finishRun(run: InternalRun, reason: string): void {
     },
   });
   run.handlers.onExit(run.id, { code: run.exitCode, signal: run.exitSignal, reason });
+  const status = reason === "cancelled" || reason === "user-cancel" || reason === "socket-disconnect" ? "cancelled" : reason === "error" ? "failed" : "succeeded";
+  jobsRepo.transition(run.id, run.workspaceId, { status, error: reason === "error" ? "Runbook execution failed" : null });
+  jobsRepo.appendEvent(run.id, run.workspaceId, "exit", { code: run.exitCode, signal: run.exitSignal, reason });
+  runbooksRepo.recordExecutionFinish(run.id, run.workspaceId, {
+    status,
+    exitCode: run.exitCode,
+    durationMs: Date.now() - run.startedAt,
+    error: reason === "error" ? "Runbook execution failed" : null,
+  });
+  getOperationsPublisher()?.publish({ workspaceId: run.workspaceId, jobId: run.id, type: "exit", payload: { code: run.exitCode, signal: run.exitSignal, reason } });
 }
 
 export async function runRunbook(opts: RunRunbookOpts): Promise<RunbookRunInfo> {
@@ -370,8 +382,10 @@ export async function runRunbook(opts: RunRunbookOpts): Promise<RunbookRunInfo> 
   if (!runbook) throw new Error(`runbook not found: ${opts.runbookId}`);
   if (!/^[A-Za-z0-9_][A-Za-z0-9_./+-]*$/.test(runbook.shell)) throw new Error("runbook shell is invalid");
 
+  const latestRev = runbooksRepo.getLatestRevision(runbook.id, opts.workspaceId);
   const auth = buildAuth(node, opts.workspaceId);
-  const id = randomUUID();
+  const job = jobsRepo.create({ operation: "runbook.execute", payload: { nodeId: node.id, runbookId: runbook.id, actor: opts.actor }, availableAt: Date.now() }, opts.workspaceId);
+  const id = job.id;
   const client = new Client();
   const run: InternalRun = {
     id,
@@ -388,6 +402,19 @@ export async function runRunbook(opts: RunRunbookOpts): Promise<RunbookRunInfo> 
     exitSignal: null,
   };
   runStore().set(id, run);
+  runbooksRepo.recordExecutionStart({
+    id,
+    jobId: id,
+    runbookId: runbook.id,
+    revisionId: latestRev?.id,
+    workspaceId: opts.workspaceId,
+    nodeId: node.id,
+    actor: opts.actor,
+    startedAt: run.startedAt,
+  });
+  jobsRepo.leaseJob(id, opts.workspaceId, `worker-${opts.actor}`, 30 * 60 * 1000);
+  jobsRepo.appendEvent(id, opts.workspaceId, "status", { status: "connecting" });
+  getOperationsPublisher()?.publish({ workspaceId: opts.workspaceId, jobId: id, type: "status", payload: { status: "connecting" } });
   opts.handlers.onStatus(id, "connecting");
 
   return await new Promise<RunbookRunInfo>((resolve, reject) => {
@@ -404,10 +431,22 @@ export async function runRunbook(opts: RunRunbookOpts): Promise<RunbookRunInfo> 
         if (error) return fail(error.message);
         run.channel = channel;
         started = true;
+        jobsRepo.appendEvent(id, opts.workspaceId, "status", { status: "running" });
+        getOperationsPublisher()?.publish({ workspaceId: opts.workspaceId, jobId: id, type: "status", payload: { status: "running" } });
         opts.handlers.onStatus(id, "running");
 
-        channel.on("data", (data: Buffer) => opts.handlers.onOutput(id, "stdout", data.toString("utf8")));
-        channel.stderr.on("data", (data: Buffer) => opts.handlers.onOutput(id, "stderr", data.toString("utf8")));
+        channel.on("data", (data: Buffer) => {
+          const chunk = data.toString("utf8");
+          jobsRepo.appendEvent(id, opts.workspaceId, "output", { stream: "stdout", chunk });
+          getOperationsPublisher()?.publish({ workspaceId: opts.workspaceId, jobId: id, type: "output", payload: { stream: "stdout", chunk } });
+          opts.handlers.onOutput(id, "stdout", chunk);
+        });
+        channel.stderr.on("data", (data: Buffer) => {
+          const chunk = data.toString("utf8");
+          jobsRepo.appendEvent(id, opts.workspaceId, "output", { stream: "stderr", chunk });
+          getOperationsPublisher()?.publish({ workspaceId: opts.workspaceId, jobId: id, type: "output", payload: { stream: "stderr", chunk } });
+          opts.handlers.onOutput(id, "stderr", chunk);
+        });
         channel.on("exit", (code: number | null, signal?: string) => {
           run.exitCode = code;
           run.exitSignal = signal ?? null;

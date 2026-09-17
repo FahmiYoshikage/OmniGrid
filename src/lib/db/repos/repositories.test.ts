@@ -8,6 +8,7 @@ import { migrate } from "@/lib/db/migrate";
 import { credentialsRepo } from "./credentials";
 import { integrationSettingsRepo } from "./integration-settings";
 import { nodesRepo } from "./nodes";
+import { nodeHealthRepo } from "./node-health";
 import { runbooksRepo } from "./runbooks";
 import { workspacesRepo } from "./workspaces";
 
@@ -163,6 +164,59 @@ describe("workspace-scoped repositories", () => {
     expect(runbooksRepo.get(runbook.id, first.id)).toBeDefined();
   });
 
+  it("creates immutable revisions and tracks execution records for runbooks", () => {
+    const ws = createWorkspace("revisions-ws");
+    const runbook = runbooksRepo.create(
+      { name: "Backup", description: "initial backup", body: "tar -czf backup.tar.gz /data", actor: "admin" },
+      ws.id,
+    );
+
+    const initialRevs = runbooksRepo.listRevisions(runbook.id, ws.id);
+    expect(initialRevs).toHaveLength(1);
+    expect(initialRevs[0]?.revisionNumber).toBe(1);
+    expect(initialRevs[0]?.body).toBe("tar -czf backup.tar.gz /data");
+
+    runbooksRepo.update(
+      runbook.id,
+      { name: "Backup v2", description: "updated backup", body: "tar -czvf backup-v2.tar.gz /data", actor: "operator" },
+      ws.id,
+    );
+
+    const updatedRevs = runbooksRepo.listRevisions(runbook.id, ws.id);
+    expect(updatedRevs).toHaveLength(2);
+    expect(updatedRevs[0]?.revisionNumber).toBe(2);
+    expect(updatedRevs[0]?.body).toBe("tar -czvf backup-v2.tar.gz /data");
+    expect(updatedRevs[1]?.revisionNumber).toBe(1);
+
+    // Track execution record
+    const node = nodesRepo.create(
+      { name: "target-host", hostname: "10.0.0.1" },
+      ws.id,
+    );
+    const execRecord = runbooksRepo.recordExecutionStart({
+      runbookId: runbook.id,
+      revisionId: updatedRevs[0]?.id,
+      workspaceId: ws.id,
+      nodeId: node.id,
+      actor: "operator",
+    });
+    expect(execRecord.status).toBe("running");
+
+    const finished = runbooksRepo.recordExecutionFinish(execRecord.id, ws.id, {
+      status: "succeeded",
+      exitCode: 0,
+      durationMs: 1420,
+    });
+    expect(finished).toBe(true);
+
+    const executions = runbooksRepo.listExecutions(ws.id, { runbookId: runbook.id });
+    expect(executions).toHaveLength(1);
+    expect(executions[0]?.status).toBe("succeeded");
+    expect(executions[0]?.exitCode).toBe(0);
+    expect(executions[0]?.durationMs).toBe(1420);
+    expect(executions[0]?.actor).toBe("operator");
+  });
+
   it("isolates integration settings and supports explicit secret clearing", () => {
     const first = createWorkspace("one");
     const second = createWorkspace("two");
@@ -259,5 +313,84 @@ describe("session cookie resolution", () => {
     db.prepare("UPDATE auth_sessions SET expires_at = ? WHERE id = ?")
       .run(Date.now() - 1, sha256Hex(token));
     expect(getSessionUserFromToken(encryptedToken)).toBeNull();
+  });
+});
+
+describe("nodeHealthRepo", () => {
+  it("upserts, updates on conflict, lists snapshots, and aggregates containers", () => {
+    const workspace = createWorkspace("one");
+
+    // 1. Initial local snapshot
+    const snap1 = nodeHealthRepo.upsert({
+      workspaceId: workspace.id,
+      nodeId: "__local__",
+      sourceName: "Local Server",
+      containers: [
+        {
+          id: "c1",
+          name: "web-app",
+          image: "nginx:alpine",
+          state: "running",
+          status: "Up 2 hours",
+          source: "Local Server",
+        },
+      ],
+      isReachable: true,
+      dockerReachable: true,
+      latencyMs: 12,
+    });
+
+    expect(snap1.nodeId).toBe("__local__");
+    expect(snap1.containers).toHaveLength(1);
+    expect(snap1.isReachable).toBe(true);
+    expect(snap1.dockerReachable).toBe(true);
+
+    // 2. Add remote node snapshot
+    nodeHealthRepo.upsert({
+      workspaceId: workspace.id,
+      nodeId: "node-123",
+      sourceName: "Worker-01",
+      containers: [
+        {
+          id: "c2",
+          name: "db-redis",
+          image: "redis:7",
+          state: "running",
+          status: "Up 5 days",
+          source: "Worker-01",
+        },
+      ],
+      isReachable: true,
+      dockerReachable: true,
+      latencyMs: 45,
+    });
+
+    const list = nodeHealthRepo.list(workspace.id);
+    expect(list).toHaveLength(2);
+
+    const containers = nodeHealthRepo.getAllContainers(workspace.id);
+    expect(containers).toHaveLength(2);
+    expect(containers.map((c) => c.name)).toContain("web-app");
+    expect(containers.map((c) => c.name)).toContain("db-redis");
+
+    // 3. Update snapshot on conflict (re-probe with error)
+    const updated = nodeHealthRepo.upsert({
+      workspaceId: workspace.id,
+      nodeId: "node-123",
+      sourceName: "Worker-01",
+      containers: [],
+      isReachable: false,
+      dockerReachable: false,
+      latencyMs: null,
+      errorMessage: "SSH Connection timed out",
+    });
+
+    expect(updated.isReachable).toBe(false);
+    expect(updated.errorMessage).toBe("SSH Connection timed out");
+
+    // Aggregated containers now only returns healthy local node containers
+    const updatedContainers = nodeHealthRepo.getAllContainers(workspace.id);
+    expect(updatedContainers).toHaveLength(1);
+    expect(updatedContainers[0].name).toBe("web-app");
   });
 });

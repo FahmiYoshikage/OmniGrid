@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Edit3, ExternalLink, KeyRound, Plus, RefreshCw, Server, Shield, Tags, Terminal, Trash2, Wifi } from "lucide-react";
+import { Activity, Edit3, ExternalLink, KeyRound, Plus, RefreshCw, Server, Shield, Tags, Terminal, Trash2, Wifi } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,9 +36,23 @@ interface CredentialPublic {
   has_passphrase: boolean;
 }
 
+interface NodeSnapshotSummary {
+  id: string;
+  nodeId: string;
+  sourceName: string;
+  containers: Array<{ id: string; name: string }>;
+  isReachable: boolean;
+  dockerReachable: boolean;
+  latencyMs: number | null;
+  errorMessage: string | null;
+  lastScannedAt: number;
+}
+
 export default function NodesPage() {
   const [nodes, setNodes] = useState<NodeRow[]>([]);
+  const [snapshots, setSnapshots] = useState<Record<string, NodeSnapshotSummary>>({});
   const [loading, setLoading] = useState(true);
+  const [probing, setProbing] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<NodeRow | null>(null);
   const [hostKeyNode, setHostKeyNode] = useState<NodeRow | null>(null);
@@ -46,20 +60,61 @@ export default function NodesPage() {
   const stats = useMemo(() => {
     const tags = new Set<string>();
     for (const n of nodes) parseTags(n.tags).forEach((tag) => tags.add(tag));
+    const reachableCount = Object.values(snapshots).filter((s) => s.isReachable).length;
     return {
       total: nodes.length,
-      tailscale: nodes.filter((n) => n.ssh_mode === "tailscale").length,
+      reachable: reachableCount,
       tagged: tags.size,
     };
-  }, [nodes]);
+  }, [nodes, snapshots]);
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/nodes");
-    const data = await res.json();
-    setNodes(data.nodes ?? []);
-    setLoading(false);
+    try {
+      const [nodesRes, healthRes] = await Promise.all([
+        fetch("/api/nodes"),
+        fetch("/api/nodes/health"),
+      ]);
+      const data = await nodesRes.json();
+      setNodes(data.nodes ?? []);
+
+      if (healthRes.ok) {
+        const hData = await healthRes.json();
+        const map: Record<string, NodeSnapshotSummary> = {};
+        for (const s of hData.snapshots ?? []) {
+          map[s.nodeId] = s;
+        }
+        setSnapshots(map);
+      }
+    } catch {
+      toast.error("Failed to load nodes");
+    } finally {
+      setLoading(false);
+    }
   }
+
+  async function probeFleet() {
+    setProbing(true);
+    try {
+      const res = await fetch("/api/nodes/health", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<string, NodeSnapshotSummary> = {};
+        for (const s of data.snapshots ?? []) {
+          map[s.nodeId] = s;
+        }
+        setSnapshots(map);
+        toast.success("Fleet health probe completed");
+      } else {
+        toast.error("Fleet probe failed");
+      }
+    } catch {
+      toast.error("Fleet probe error");
+    } finally {
+      setProbing(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
@@ -85,21 +140,31 @@ export default function NodesPage() {
         title="Nodes"
         description="Inventory command center for servers, VPS, and Tailscale devices. Manage SSH target metadata before opening terminals or drawing topology."
         actions={
-          <>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={probeFleet}
+              disabled={probing}
+              className="border-white/10 bg-white/5 gap-1.5 text-xs"
+            >
+              <Activity className={"h-3.5 w-3.5 text-emerald-400 " + (probing ? "animate-spin" : "")} />
+              {probing ? "Probing fleet..." : "Probe fleet"}
+            </Button>
             <Button variant="outline" size="sm" onClick={load} disabled={loading} className="border-white/10 bg-white/5">
               <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} />
             </Button>
             <Button size="sm" onClick={() => setOpen(true)}>
               <Plus className="h-4 w-4" /> Add node
             </Button>
-          </>
+          </div>
         }
       />
 
       <div className="space-y-6 p-8">
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard icon={Server} label="Managed nodes" value={stats.total} tone="cyan" />
-          <StatCard icon={Shield} label="Agent/default key" value={stats.tailscale} tone="emerald" />
+          <StatCard icon={Shield} label="Reachable (online)" value={stats.reachable} tone="emerald" />
           <StatCard icon={Tags} label="Unique tags" value={stats.tagged} tone="violet" />
         </div>
 
@@ -124,6 +189,7 @@ export default function NodesPage() {
               <NodeCard
                 key={node.id}
                 node={node}
+                snapshot={snapshots[node.id]}
                 onEdit={() => setEditing(node)}
                 onDelete={() => remove(node.id)}
                 onHostKeys={() => setHostKeyNode(node)}
@@ -194,11 +260,13 @@ function StatCard({
 
 function NodeCard({
   node,
+  snapshot,
   onEdit,
   onDelete,
   onHostKeys,
 }: {
   node: NodeRow;
+  snapshot?: NodeSnapshotSummary;
   onEdit: () => void;
   onDelete: () => void;
   onHostKeys: () => void;
@@ -223,6 +291,50 @@ function NodeCard({
               <Wifi className="h-3.5 w-3.5" />
               <span>{node.hostname}</span>
               <span className="text-muted-foreground">:{node.ssh_port}</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {snapshot ? (
+                <>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] gap-1",
+                      snapshot.isReachable
+                        ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                        : "border-red-400/30 bg-red-400/10 text-red-300"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        snapshot.isReachable ? "bg-emerald-400" : "bg-red-400"
+                      )}
+                    />
+                    {snapshot.isReachable
+                      ? `SSH Online ${snapshot.latencyMs != null ? `(${snapshot.latencyMs}ms)` : ""}`
+                      : "SSH Offline"}
+                  </Badge>
+
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px]",
+                      snapshot.dockerReachable
+                        ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
+                        : "border-zinc-500/30 bg-zinc-500/10 text-zinc-400"
+                    )}
+                  >
+                    {snapshot.dockerReachable
+                      ? `Docker: ${snapshot.containers.length} containers`
+                      : "Docker: Inactive"}
+                  </Badge>
+                </>
+              ) : (
+                <Badge variant="outline" className="border-white/10 bg-white/5 text-[10px] text-muted-foreground">
+                  Unprobed
+                </Badge>
+              )}
             </div>
           </div>
         </div>

@@ -56,11 +56,12 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
     const [error, setError] = useState<string | null>(null);
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-    async function fetchContainers(showSpinner = true) {
+    async function fetchContainers(showSpinner = true, force = false) {
         if (showSpinner) setScanning(true);
         setError(null);
         try {
-            const res = await fetch('/api/uptime/discover', {
+            const url = `/api/uptime/discover${force ? '?refresh=true' : ''}`;
+            const res = await fetch(url, {
                 cache: 'no-store',
             });
             const data = (await res.json().catch(() => ({}))) as {
@@ -152,7 +153,7 @@ export function ContainersClient({ snapshot }: ContainersClientProps) {
                             </span>
                         ) : null}
                         <button
-                            onClick={() => void fetchContainers(true)}
+                            onClick={() => void fetchContainers(true, true)}
                             className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
                         >
                             <RefreshCw

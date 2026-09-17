@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AuthAvailability } from "@/lib/auth/availability";
+import { NotificationSettingsCard } from "./notifications-settings";
 
 interface TailscaleSettings {
   tailnet: string;
@@ -719,6 +720,8 @@ export function SettingsClient({
           </div>
         </CardContent>
       </Card>
+
+      <NotificationSettingsCard />
 
       <Card className="border-red-400/20 bg-red-500/10 shadow-2xl shadow-black/10">
         <CardHeader>

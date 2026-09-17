@@ -4,8 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
+  CheckCircle2,
   Edit3,
   FileCode2,
+  History,
   Loader2,
   Play,
   Plus,
@@ -16,6 +19,7 @@ import {
   Square,
   TerminalSquare,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +61,24 @@ interface NodeOption {
   name: string;
   hostname: string;
   ssh_mode: string;
+}
+
+interface ExecutionSummary {
+  id: string;
+  jobId: string | null;
+  runbookId: string;
+  runbookName?: string;
+  revisionId: string | null;
+  workspaceId: string;
+  nodeId: string;
+  nodeName?: string;
+  actor: string;
+  status: "running" | "succeeded" | "failed" | "cancelled";
+  exitCode: number | null;
+  durationMs: number | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number | null;
 }
 
 type RunStatus = "connecting" | "running" | "cancelling" | "completed" | "cancelled" | "failed";
@@ -135,8 +157,25 @@ export function RunbooksClient() {
   const [runTarget, setRunTarget] = useState<RunbookSummary | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
+  const [activeTab, setActiveTab] = useState<"library" | "history">("library");
+  const [executions, setExecutions] = useState<ExecutionSummary[]>([]);
+  const [executionsLoading, setExecutionsLoading] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const outputRef = useRef<HTMLDivElement | null>(null);
+
+  async function loadExecutions() {
+    setExecutionsLoading(true);
+    try {
+      const res = await fetch("/api/runbooks/executions", { cache: "no-store" });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { executions: ExecutionSummary[] };
+      setExecutions(data.executions ?? []);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load execution history");
+    } finally {
+      setExecutionsLoading(false);
+    }
+  }
 
   async function loadRunbooks() {
     setLoading(true);
@@ -218,6 +257,7 @@ export function RunbooksClient() {
           reason: event.reason,
         };
       });
+      void loadExecutions();
     }
 
     function onError(event: RunErrorEvent) {
@@ -373,44 +413,85 @@ export function RunbooksClient() {
 
   return (
     <div className="space-y-6 p-8">
-      <div className="grid gap-4 lg:grid-cols-[1fr_0.72fr]">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/10">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                <FileCode2 className="h-4 w-4 text-cyan-200" />
-                Runbook library
-              </div>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Store repeatable shell snippets and operational procedures encrypted per workspace.
-              </p>
-            </div>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              New runbook
-            </Button>
-          </div>
-          <div className="mt-5 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search runbooks..."
-              className="border-0 bg-transparent shadow-none focus-visible:ring-0"
-            />
-          </div>
+      {/* Tab Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center rounded-2xl border border-white/10 bg-black/20 p-1">
+          <Button
+            variant={activeTab === "library" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("library")}
+            className="gap-2 text-xs font-medium"
+          >
+            <FileCode2 className="h-4 w-4 text-cyan-300" />
+            Runbook Library ({runbooks.length})
+          </Button>
+          <Button
+            variant={activeTab === "history" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => {
+              setActiveTab("history");
+              void loadExecutions();
+            }}
+            className="gap-2 text-xs font-medium"
+          >
+            <History className="h-4 w-4 text-emerald-300" />
+            Execution History {executions.length > 0 && `(${executions.length})`}
+          </Button>
         </div>
-
-        <div className="rounded-3xl border border-emerald-300/15 bg-emerald-300/10 p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-100">
-            <ShieldCheck className="h-4 w-4" />
-            Workspace encrypted
-          </div>
-          <p className="mt-2 text-sm leading-6 text-emerald-50/75">
-            Runbook bodies are encrypted at rest. The list view only exposes metadata; command bodies are revealed when opening a runbook.
-          </p>
-        </div>
+        {activeTab === "history" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadExecutions()}
+            disabled={executionsLoading}
+            className="gap-1.5"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", executionsLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        )}
       </div>
+
+      {activeTab === "library" && (
+        <div className="grid gap-4 lg:grid-cols-[1fr_0.72fr]">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/10">
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <FileCode2 className="h-4 w-4 text-cyan-200" />
+                  Runbook library
+                </div>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Store repeatable shell snippets and operational procedures encrypted per workspace.
+                </p>
+              </div>
+              <Button onClick={openCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                New runbook
+              </Button>
+            </div>
+            <div className="mt-5 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search runbooks..."
+                className="border-0 bg-transparent shadow-none focus-visible:ring-0"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-emerald-300/15 bg-emerald-300/10 p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-100">
+              <ShieldCheck className="h-4 w-4" />
+              Workspace encrypted & versioned
+            </div>
+            <p className="mt-2 text-sm leading-6 text-emerald-50/75">
+              Runbook bodies are encrypted at rest with immutable revisions. Executions are persisted and survive disconnects.
+            </p>
+          </div>
+        </div>
+      )}
 
       {activeRun && (
         <section className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/20">
@@ -463,62 +544,152 @@ export function RunbooksClient() {
         </section>
       )}
 
-      {loading ? (
-        <div className="rounded-3xl border border-white/10 bg-black/20 p-6 text-sm text-muted-foreground">
-          Loading runbooks...
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="grid min-h-72 place-items-center rounded-3xl border border-white/10 bg-black/20 p-6 text-center">
-          <div>
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-cyan-300/10 text-cyan-200">
-              <FileCode2 className="h-7 w-7" />
+      {/* Execution History Tab View */}
+      {activeTab === "history" && (
+        <section className="space-y-4">
+          {executionsLoading && executions.length === 0 ? (
+            <div className="rounded-3xl border border-white/10 bg-black/20 p-6 text-sm text-muted-foreground">
+              Loading execution history...
             </div>
-            <h2 className="mt-4 text-lg font-semibold text-white">
-              {runbooks.length ? "No matching runbooks" : "No runbooks yet"}
-            </h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-              Create your first runbook for maintenance commands, incident checks, deployment notes, or recovery steps.
-            </p>
-            <Button className="mt-5" onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              New runbook
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {filtered.map((runbook) => (
-            <article key={runbook.id} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/10">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-lg font-semibold text-white">{runbook.name}</h2>
-                    <Badge variant="secondary">{runbook.shell}</Badge>
+          ) : executions.length === 0 ? (
+            <div className="grid min-h-64 place-items-center rounded-3xl border border-white/10 bg-black/20 p-6 text-center">
+              <div>
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-cyan-400/10 text-cyan-300">
+                  <History className="h-6 w-6" />
+                </div>
+                <h3 className="mt-3 text-base font-semibold text-white">No Executions Recorded</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Run a runbook against any managed node to track persistent execution logs and duration.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] shadow-2xl shadow-black/10">
+              <div className="divide-y divide-white/10">
+                {executions.map((item) => (
+                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4.5 gap-3 hover:bg-white/[0.02] transition">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={cn(
+                        "grid h-9 w-9 shrink-0 place-items-center rounded-xl",
+                        item.status === "succeeded" && "bg-emerald-500/15 text-emerald-400",
+                        item.status === "failed" && "bg-red-500/15 text-red-400",
+                        item.status === "cancelled" && "bg-amber-500/15 text-amber-400",
+                        item.status === "running" && "bg-cyan-500/15 text-cyan-400 animate-pulse",
+                      )}>
+                        {item.status === "succeeded" && <CheckCircle2 className="h-4 w-4" />}
+                        {item.status === "failed" && <XCircle className="h-4 w-4" />}
+                        {item.status === "cancelled" && <AlertTriangle className="h-4 w-4" />}
+                        {item.status === "running" && <Loader2 className="h-4 w-4 animate-spin" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white text-sm truncate">
+                            {item.runbookName ?? "Runbook"}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "capitalize text-[10px]",
+                              item.status === "succeeded" && "border-emerald-500/30 text-emerald-300",
+                              item.status === "failed" && "border-red-500/30 text-red-300",
+                              item.status === "cancelled" && "border-amber-500/30 text-amber-300",
+                              item.status === "running" && "border-cyan-500/30 text-cyan-300",
+                            )}
+                          >
+                            {item.status}
+                          </Badge>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                          <span>Target: <strong className="text-zinc-200">{item.nodeName ?? item.nodeId}</strong></span>
+                          <span>·</span>
+                          <span>Actor: <strong className="text-zinc-200">{item.actor}</strong></span>
+                          {item.durationMs !== null && (
+                            <>
+                              <span>·</span>
+                              <span className="font-mono text-cyan-300">{item.durationMs < 1000 ? `${item.durationMs}ms` : `${(item.durationMs / 1000).toFixed(2)}s`}</span>
+                            </>
+                          )}
+                          {item.exitCode !== null && (
+                            <>
+                              <span>·</span>
+                              <span className={cn("font-mono", item.exitCode === 0 ? "text-emerald-400" : "text-red-400")}>
+                                exit:{item.exitCode}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right text-[11px] text-zinc-500 shrink-0 font-mono">
+                      {new Date(item.startedAt).toLocaleString()}
+                    </div>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                    {runbook.description || "No description provided."}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => openRunDialog(runbook)} disabled={runInProgress} title={runInProgress ? "Another runbook is executing" : `Run ${runbook.name}`}>
-                    <Play className="h-4 w-4" />
-                    Run
-                  </Button>
-                  <Button variant="outline" size="icon-sm" onClick={() => void openEdit(runbook.id)} title="Edit runbook">
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon-sm" onClick={() => void deleteRunbook(runbook.id)} title="Delete runbook">
-                    <Trash2 className="h-4 w-4 text-red-200" />
-                  </Button>
-                </div>
+                ))}
               </div>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                <span>Created {new Date(runbook.created_at).toLocaleString()}</span>
-                <span>Updated {new Date(runbook.updated_at).toLocaleString()}</span>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Runbook Library Tab View */}
+      {activeTab === "library" && (
+        loading ? (
+          <div className="rounded-3xl border border-white/10 bg-black/20 p-6 text-sm text-muted-foreground">
+            Loading runbooks...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="grid min-h-72 place-items-center rounded-3xl border border-white/10 bg-black/20 p-6 text-center">
+            <div>
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-cyan-300/10 text-cyan-200">
+                <FileCode2 className="h-7 w-7" />
               </div>
-            </article>
-          ))}
-        </div>
+              <h2 className="mt-4 text-lg font-semibold text-white">
+                {runbooks.length ? "No matching runbooks" : "No runbooks yet"}
+              </h2>
+              <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                Create your first runbook for maintenance commands, incident checks, deployment notes, or recovery steps.
+              </p>
+              <Button className="mt-5" onClick={openCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                New runbook
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {filtered.map((runbook) => (
+              <article key={runbook.id} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/10">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate text-lg font-semibold text-white">{runbook.name}</h2>
+                      <Badge variant="secondary">{runbook.shell}</Badge>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                      {runbook.description || "No description provided."}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openRunDialog(runbook)} disabled={runInProgress} title={runInProgress ? "Another runbook is executing" : `Run ${runbook.name}`}>
+                      <Play className="h-4 w-4" />
+                      Run
+                    </Button>
+                    <Button variant="outline" size="icon-sm" onClick={() => void openEdit(runbook.id)} title="Edit runbook">
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon-sm" onClick={() => void deleteRunbook(runbook.id)} title="Delete runbook">
+                      <Trash2 className="h-4 w-4 text-red-200" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span>Created {new Date(runbook.created_at).toLocaleString()}</span>
+                  <span>Updated {new Date(runbook.updated_at).toLocaleString()}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        )
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

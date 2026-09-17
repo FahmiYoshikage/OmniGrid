@@ -2,6 +2,140 @@
 
 Tanggal: 2026-05-16
 
+## Update Checkpoint 2026-09-17 (Session 20) — Full Master Roadmap Execution (Milestones 2, 3, 4, 5)
+
+### 67. Zero Trust Fleet Topology Overhaul (Milestone 5)
+**File baru:**
+- `src/app/topology/nodes/control-plane-node.tsx`
+- `src/app/topology/nodes/fleet-node.tsx`
+- `src/app/topology/nodes/edge-node.tsx`
+- `src/app/topology/nodes/omnigrid-net-node.tsx`
+
+**File edit:**
+- `src/app/topology/page.tsx`
+- `src/app/topology/topology-canvas.tsx`
+
+**Perubahan:**
+- Merombak visualisasi topologi agar merefleksikan arsitektur inti OmniGrid: Control Plane ➔ Managed Hosts via SSH:22 ➔ `omnigrid-net` ➔ Cloudflare Tunnels ➔ Edge Ingress.
+- Menghapus ketergantungan wajib pada Tailscale agar topologi tetap dapat dibuka dan divisualisasikan meskipun Tailscale belum dikonfigurasi.
+- Menambahkan tab switcher di Topology Canvas: "Zero Trust Fleet" (default) vs "Tailscale Mesh".
+- Membuat custom nodes ReactFlow dengan status reachability, visual pill, dan edge animation.
+
+### 68. Runbooks 2.0: Immutable Revisions & Persistent Execution Records (Milestone 2)
+**File baru:**
+- `src/lib/db/migrations/012_runbook_revisions.sql`
+- `src/app/api/runbooks/[id]/executions/route.ts`
+- `src/app/api/runbooks/executions/route.ts`
+
+**File edit:**
+- `src/lib/db/repos/runbooks.ts`
+- `src/lib/ssh/manager.ts`
+- `src/app/runbooks/runbooks-client.tsx`
+- `src/lib/db/repos/repositories.test.ts`
+
+**Perubahan:**
+- Skema migrasi `runbook_revisions` (snapshot versi runbook setiap kali dibuat atau diperbarui) dan `runbook_executions` (pencatatan eksekusi per workspace, actor, node, status, exit code, duration, log snippet).
+- Integrasi otomatis pada SSH manager `runRunbook` dan `finishRun` untuk mencatat execution history secara persisten.
+- Penambahan endpoint REST API untuk mengambil riwayat eksekusi runbook tertentu atau seluruh workspace.
+- Antarmuka UI di `/runbooks` dengan tab switcher "Runbook Library" vs "Execution History" lengkap dengan real-time badges, durasi, actor, dan refresh trigger.
+
+### 69. Multi-Channel Alert Notifications System (Milestone 3)
+**File baru:**
+- `src/lib/db/migrations/013_notifications.sql`
+- `src/lib/db/repos/notifications.ts`
+- `src/lib/notifications/dispatcher.ts`
+- `src/lib/notifications/dispatcher.test.ts`
+- `src/app/api/notifications/channels/route.ts`
+- `src/app/api/notifications/channels/[id]/route.ts`
+- `src/app/api/notifications/channels/[id]/test/route.ts`
+- `src/app/api/notifications/deliveries/route.ts`
+- `src/app/settings/notifications-settings.tsx`
+
+**File edit:**
+- `src/lib/uptime/checker.ts`
+- `src/app/settings/settings-client.tsx`
+
+**Perubahan:**
+- Skema tabel `notification_channels` dan audit trail `notification_deliveries`.
+- Repository dengan enkripsi token (AES-256-GCM) dan masking otomatis pada API GET.
+- Notification dispatcher modular mendukung:
+  - Telegram Bot API (HTML formatting)
+  - Discord Webhooks (rich embeds dengan warna severity)
+  - Generic Webhook dengan signature verification HMAC-SHA256 (`X-OmniGrid-Signature`)
+- Integrasi otomatis pada Uptime Monitor (`checker.ts`): dispatch alert saat insiden baru terbuka (`Service Outage`) dan saat layanan pulih (`Service Recovered`).
+- Halaman konfigurasi channel notifikasi di `/settings` lengkap dengan form tambah channel dinamis, tombol test alert langsung, dan audit log riwayat pengiriman alert.
+
+### 70. Background Container Discovery & Node Health Probing (Milestone 4)
+**File baru:**
+- `src/lib/db/migrations/014_node_health.sql`
+- `src/lib/db/repos/node-health.ts`
+- `src/lib/nodes/scanner.ts`
+- `src/app/api/nodes/health/route.ts`
+
+**File edit:**
+- `src/app/api/uptime/discover/route.ts`
+- `src/app/nodes/page.tsx`
+- `src/app/containers/containers-client.tsx`
+- `src/lib/db/repos/repositories.test.ts`
+
+**Perubahan:**
+- Skema tabel `node_snapshots` menyimpan cache daftar kontainer Docker, reachability SSH, status Docker daemon, latency dalam ms, dan error message per node.
+- Scanner module terpusat `scanner.ts` untuk memindai node lokal dan remote node via `execSsh` dengan timeout ketat (4-5 detik) secara paralel.
+- `/api/uptime/discover` kini membaca langsung dari cache database (<10ms) dan melakukan background refresh otomatis jika data kedaluwarsa (>60 detik), atau pemindaian on-demand saat `?refresh=true`.
+- Endpoint `GET/POST /api/nodes/health` untuk membaca dan memicu health probe seluruh armada node.
+- Halaman `/nodes` kini menampilkan status SSH Online (beserta latency ms), status Docker kontainer aktif, tombol "Probe fleet", dan metrik ringkasan armada node yang reachable.
+
+**Verifikasi:**
+- Vitest: 12 test files passed, 50 tests passed (100% green).
+- Typecheck: `tsc --noEmit` berhasil (0 TypeScript errors).
+- ESLint: `eslint` berhasil (0 warnings/errors).
+- Build: `next build` berhasil menghasilkan 45 routes tanpa issue.
+
+## Update Checkpoint 2026-09-17 (Session 19) — Durable Jobs Stabilization & Generic SSH Execution Pattern
+
+### 65. Durable Jobs Contract & Worker Hardening
+**File baru:**
+- `src/lib/jobs/worker.test.ts`
+
+**File edit:**
+- `src/lib/db/migrations/011_operation_jobs.sql`
+- `src/lib/jobs/repository.ts`
+- `src/lib/jobs/worker.ts`
+- `src/lib/operations/socket.ts`
+- `src/lib/ssh/manager.ts`
+
+**Perubahan:**
+- Menyelaraskan status state machine pada `operation_jobs` agar mendukung status `'pending'` dan `'queued'` secara konsisten pada CHECK constraint skema dan fungsi lease repository.
+- Menambahkan method `jobsRepo.leaseJob()` untuk mengunci dan mengeksekusi job tertentu secara atomik berdasarkan job ID dan workspace ID.
+- Memperbaiki filter recovery lease di `worker.ts` agar mengeksekusi list status `'pending'`.
+- Menyediakan getter `getOperationsPublisher()` dan setter `setOperationsPublisher()` pada `src/lib/operations/socket.ts` sehingga seluruh service server dapat memancarkan event operasional ke room Socket.IO `/operations`.
+- Memperbarui `runRunbook` dan `finishRun` di `src/lib/ssh/manager.ts` agar menyiarkan event status (`connecting`, `running`), output chunks (`stdout`, `stderr`), dan exit signal langsung ke `/operations`.
+- Menambahkan unit test komprehensif untuk `createJobWorker` di `src/lib/jobs/worker.test.ts`.
+
+### 66. Generic SSH Command Execution Module
+**File baru:**
+- `src/lib/ssh/exec.ts`
+- `src/lib/ssh/exec.test.ts`
+
+**File edit:**
+- `src/app/api/uptime/discover/route.ts`
+
+**Perubahan:**
+- Membuat modul eksekusi command SSH terpusat `execSsh` di `src/lib/ssh/exec.ts` dengan fitur:
+  - Dukungan pembatalan via `AbortSignal`.
+  - Konfigurasi timeout keras (default 15 detik, max 5 menit).
+  - Pembatasan output byte (default 50KB) untuk mencegah exhaustion memori server.
+  - Taksonomi error terstruktur: `SshExecError` dengan kode `NODE_NOT_FOUND`, `AUTH_FAILED`, `CONNECT_FAILED`, `HOST_KEY_REJECTED`, `TIMEOUT`, `ABORTED`, `OUTPUT_LIMIT_EXCEEDED`, dan `EXEC_FAILED`.
+  - Integrasi otomatis dengan `createHostVerifier` dan credential resolution.
+- Merefaktor `src/app/api/uptime/discover/route.ts` dengan menghapus implementasi ad-hoc `execSsh` lama dan beralih ke `@/lib/ssh/exec`.
+- Menambahkan unit test untuk `execSsh` di `src/lib/ssh/exec.test.ts`.
+
+**Verifikasi:**
+- Vitest: 11 test files passed, 46 tests passed (100% green).
+- Typecheck: `tsc --noEmit` berhasil (0 TypeScript errors).
+- ESLint: `eslint` berhasil (0 warnings/errors).
+- Build: `next build` berhasil menghasilkan 41 routes.
+
 ## Update Checkpoint 2026-08-30 (Session 18) — Documentation & Landing Page Synchronization to OmniGrid Standard
 
 ### 64. Documentation & Landing Page Alignment
